@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-6">
+        <h2 class="fw-bold mb-1">Painel de Gestão de Tarefas</h2>
+        <p class="text-muted mb-0">Controle de ciclo de vida de projetos e tarefas com conformidade arquitetural MVT + Clean Use Cases.</p>
+    </div>
+    <div class="col-md-6 text-md-end mt-3 mt-md-0 d-flex gap-2 justify-content-md-end flex-wrap">
+        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalUser">
+            <i class="bi bi-person-plus me-1"></i> Novo Usuário
+        </button>
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalProject">
+            <i class="bi bi-folder-plus me-1"></i> Novo Projeto
+        </button>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTask" {% if not projects %}disabled title="Cadastre um projeto primeiro"{% endif %}>
+            <i class="bi bi-plus-circle me-1"></i> Nova Tarefa
+        </button>
+    </div>
+</div>
+
+<!-- Stats Counter -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0">
+            <div class="card-body d-flex align-items-center">
+                <div class="bg-primary bg-opacity-10 text-primary p-3 rounded me-3">
+                    <i class="bi bi-folder2-open fs-3"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Projetos</h6>
+                    <h4 class="fw-bold mb-0">{{ projects|length }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0">
+            <div class="card-body d-flex align-items-center">
+                <div class="bg-warning bg-opacity-10 text-warning p-3 rounded me-3">
+                    <i class="bi bi-hourglass-split fs-3"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Pendentes</h6>
+                    <h4 class="fw-bold mb-0">{{ pending_tasks|length }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0">
+            <div class="card-body d-flex align-items-center">
+                <div class="bg-info bg-opacity-10 text-info p-3 rounded me-3">
+                    <i class="bi bi-arrow-repeat fs-3"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Em Andamento</h6>
+                    <h4 class="fw-bold mb-0">{{ in_progress_tasks|length }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0">
+            <div class="card-body d-flex align-items-center">
+                <div class="bg-success bg-opacity-10 text-success p-3 rounded me-3">
+                    <i class="bi bi-check2-circle fs-3"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1">Concluídas</h6>
+                    <h4 class="fw-bold mb-0">{{ completed_tasks|length }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter by Project -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body py-2 d-flex align-items-center gap-3">
+        <span class="fw-semibold text-muted"><i class="bi bi-funnel me-1"></i> Filtrar por Projeto:</span>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/" class="btn btn-sm {% if not selected_project_id %}btn-dark{% else %}btn-outline-secondary{% endif %}">Todos</a>
+            {% for proj in projects %}
+                <a href="/?project_id={{ proj.id }}" class="btn btn-sm {% if selected_project_id == proj.id|stringformat:'s' %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+                    {{ proj.title }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Kanban Columns -->
+<div class="row g-4">
+    <!-- PENDING -->
+    <div class="col-lg-4">
+        <div class="kanban-col shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-circle-fill text-warning fs-6 me-2"></i>Pendentes</h5>
+                <span class="badge bg-secondary rounded-pill">{{ pending_tasks|length }}</span>
+            </div>
+            {% for task in pending_tasks %}
+                <div class="card task-card priority-{{ task.priority.value }} mb-3 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="card-title fw-bold mb-0">{{ task.title }}</h6>
+                            <span class="badge {% if task.priority.value == 'HIGH' %}bg-danger{% elif task.priority.value == 'MEDIUM' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                {{ task.priority.value }}
+                            </span>
+                        </div>
+                        {% if task.description %}
+                            <p class="card-text text-muted small mb-2">{{ task.description }}</p>
+                        {% endif %}
+                        <div class="small text-muted mb-2">
+                            <div><i class="bi bi-calendar-event me-1"></i>Prazo: {{ task.due_date|date:"d/m/Y H:i" }}</div>
+                            {% if task.assignee_id %}
+                                <div><i class="bi bi-person me-1"></i>Resp: {{ task.assignee_name|default:task.assignee_id }}</div>
+                            {% endif %}
+                        </div>
+                        <hr class="my-2 text-muted">
+                        <form method="POST" action="/web/tasks/{{ task.id }}/status">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="IN_PROGRESS">
+                            <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                                Iniciar <i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="text-center py-4 text-muted small">Nenhuma tarefa pendente.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- IN_PROGRESS -->
+    <div class="col-lg-4">
+        <div class="kanban-col shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-play-circle-fill text-info fs-6 me-2"></i>Em Andamento</h5>
+                <span class="badge bg-secondary rounded-pill">{{ in_progress_tasks|length }}</span>
+            </div>
+            {% for task in in_progress_tasks %}
+                <div class="card task-card priority-{{ task.priority.value }} mb-3 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="card-title fw-bold mb-0">{{ task.title }}</h6>
+                            <span class="badge {% if task.priority.value == 'HIGH' %}bg-danger{% elif task.priority.value == 'MEDIUM' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                {{ task.priority.value }}
+                            </span>
+                        </div>
+                        {% if task.description %}
+                            <p class="card-text text-muted small mb-2">{{ task.description }}</p>
+                        {% endif %}
+                        <div class="small text-muted mb-2">
+                            <div><i class="bi bi-calendar-event me-1"></i>Prazo: {{ task.due_date|date:"d/m/Y H:i" }}</div>
+                            {% if task.assignee_id %}
+                                <div><i class="bi bi-person me-1"></i>Resp: {{ task.assignee_name|default:task.assignee_id }}</div>
+                            {% endif %}
+                        </div>
+                        <hr class="my-2 text-muted">
+                        <div class="d-flex gap-2">
+                            <form method="POST" action="/web/tasks/{{ task.id }}/status" class="w-50">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="PENDING">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                                    <i class="bi bi-arrow-left me-1"></i> Voltar
+                                </button>
+                            </form>
+                            <form method="POST" action="/web/tasks/{{ task.id }}/status" class="w-50">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="COMPLETED">
+                                <button type="submit" class="btn btn-sm btn-success w-100">
+                                    Concluir <i class="bi bi-check2 ms-1"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="text-center py-4 text-muted small">Nenhuma tarefa em andamento.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- COMPLETED -->
+    <div class="col-lg-4">
+        <div class="kanban-col shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-check-circle-fill text-success fs-6 me-2"></i>Concluídas</h5>
+                <span class="badge bg-secondary rounded-pill">{{ completed_tasks|length }}</span>
+            </div>
+            {% for task in completed_tasks %}
+                <div class="card task-card priority-{{ task.priority.value }} mb-3 shadow-sm border-0 bg-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="card-title fw-bold mb-0 text-decoration-line-through text-muted">{{ task.title }}</h6>
+                            <span class="badge bg-secondary">
+                                {{ task.priority.value }}
+                            </span>
+                        </div>
+                        {% if task.description %}
+                            <p class="card-text text-muted small mb-2">{{ task.description }}</p>
+                        {% endif %}
+                        <div class="small text-muted mb-2">
+                            <div><i class="bi bi-check2-all me-1"></i>Concluída (RN-04: Não reabrir)</div>
+                            {% if task.assignee_id %}
+                                <div><i class="bi bi-person me-1"></i>Resp: {{ task.assignee_name|default:task.assignee_id }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="text-center py-4 text-muted small">Nenhuma tarefa concluída.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: NOVO PROJETO -->
+<div class="modal fade" id="modalProject" tabindex="-1" aria-labelledby="modalProjectLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="/web/projects">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalProjectLabel"><i class="bi bi-folder-plus me-2"></i>Novo Projeto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título do Projeto *</label>
+                        <input type="text" name="title" class="form-control" placeholder="ex: Reformulação do E-commerce" required maxlength="120">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="Detalhes dos objetivos do projeto"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Proprietário (Owner) *</label>
+                        <select name="owner_id" class="form-select" required>
+                            {% for u in users %}
+                                <option value="{{ u.id }}">{{ u.name }} ({{ u.email }})</option>
+                            {% empty %}
+                                <option disabled selected>Cadastre um usuário primeiro</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" {% if not users %}disabled{% endif %}>Criar Projeto</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: NOVA TAREFA -->
+<div class="modal fade" id="modalTask" tabindex="-1" aria-labelledby="modalTaskLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="/web/tasks">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalTaskLabel"><i class="bi bi-plus-circle me-2"></i>Nova Tarefa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Projeto *</label>
+                        <select name="project_id" class="form-select" required>
+                            {% for p in projects %}
+                                <option value="{{ p.id }}" {% if selected_project_id == p.id|stringformat:'s' %}selected{% endif %}>{{ p.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título da Tarefa (3 a 100 caracteres) *</label>
+                        <input type="text" name="title" class="form-control" placeholder="ex: Implementar Gateway de Pagamento" required minlength="3" maxlength="100">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Detalhes técnicos da tarefa"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Prioridade *</label>
+                            <select name="priority" class="form-select">
+                                <option value="LOW">LOW (Baixa)</option>
+                                <option value="MEDIUM" selected>MEDIUM (Média)</option>
+                                <option value="HIGH">HIGH (Alta)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Responsável</label>
+                            <select name="assignee_id" class="form-select">
+                                <option value="">Nenhum (Opcional)</option>
+                                {% for u in users %}
+                                    <option value="{{ u.id }}">{{ u.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Data de Vencimento (deve ser futura) *</label>
+                        <input type="datetime-local" name="due_date" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Cadastrar Tarefa</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: NOVO USUÁRIO -->
+<div class="modal fade" id="modalUser" tabindex="-1" aria-labelledby="modalUserLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="/web/users">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalUserLabel"><i class="bi bi-person-plus me-2"></i>Novo Usuário</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nome Completo *</label>
+                        <input type="text" name="name" class="form-control" placeholder="ex: Leonardo Lima" required maxlength="100">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">E-mail *</label>
+                        <input type="email" name="email" class="form-control" placeholder="ex: usuario@tasktrack.com" required maxlength="255">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Função (Role) *</label>
+                        <select name="role" class="form-select">
+                            <option value="MEMBER" selected>MEMBER</option>
+                            <option value="ADMIN">ADMIN</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Cadastrar Usuário</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
