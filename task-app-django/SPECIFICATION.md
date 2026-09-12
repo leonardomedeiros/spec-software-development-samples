@@ -76,6 +76,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ### 3.1 Página Inicial / Dashboard (`GET /`)
 * **Rota:** `/` (ou `/?project_id={uuid}`)
+* **Pré-requisito de inicialização:** Antes de acessar a rota, executar `python manage.py migrate`. A migration inicial `tasktrack.0001_initial` cria as tabelas `users`, `projects` e `tasks` consultadas pelo dashboard.
 * **Recursos visuais:**
   * **Barra de Métricas:** Contadores em tempo real do total de Projetos, Tarefas Pendentes, Em Andamento e Concluídas.
   * **Filtro por Projeto:** Navegação rápida para filtrar as tarefas por projeto selecionado.
