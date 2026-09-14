@@ -4,6 +4,14 @@
 
 Este arquivo deve ser executado a partir da raiz do diretório `padaria`.
 
+Se não hovuer o ambiente virtual padaria-venv, crie-o e ative-o.
+
+Se o Django ainda não estiver instalado, instale-o antes:
+
+```bash
+python -m pip install "Django>=5,<6"
+```
+
 Antes de implementar qualquer funcionalidade, verifique se o projeto Django já existe. Se `manage.py` não existir, crie a estrutura inicial nesta pasta:
 
 ```bash
@@ -11,11 +19,7 @@ python -m django startproject config .
 python manage.py startapp core
 ```
 
-Se o Django ainda não estiver instalado, instale-o antes:
 
-```bash
-python -m pip install "Django>=5,<6"
-```
 
 O app `core` deve ser adicionado a `INSTALLED_APPS` em `config/settings.py`. A implementação inicial deve criar e alterar os seguintes arquivos:
 
