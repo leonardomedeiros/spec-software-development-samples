@@ -24,7 +24,7 @@ Se preferir executar uma solicitação diretamente, sem usar a interface interat
 
 ```powershell
 Set-Location D:\git\spec-software-development-samples\padaria
-opencode run --agent build --auto "Leia integralmente spec.md. Se manage.py não existir, prepare o projeto Django conforme a seção 0. Depois crie o app core, adicione-o em INSTALLED_APPS e implemente a Fase 1 em core/models.py, core/forms.py e core/admin.py. Faça as alterações nos arquivos, não apenas descreva uma solução. Execute python manage.py check e informe o resultado."
+opencode run --agent build --auto "Leia integralmente spec.md e AGENTS.md. Como manage.py não existe, crie o projeto Django config e o app core conforme a seção 0 de spec.md. Adicione core a INSTALLED_APPS. Implemente a Fase 1: models.py, forms.py e admin.py. Execute python manage.py makemigrations, migrate e check."
 ```
 
 Antes de executar, confirme que o prompt do terminal mostra `D:\git\spec-software-development-samples\padaria`. Se o OpenCode apenas descrever a solução, interrompa a sessão e reinicie com `--agent build`; não continue no agente `plan`.
