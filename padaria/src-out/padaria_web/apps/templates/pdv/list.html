@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Vendas Abertas - PDV Sistema{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Vendas Abertas</h2>
+    <a href="{% url 'venda_create' %}" class="btn btn-primary">Nova Venda</a>
+</div>
+
+{% if vendas %}
+    <div class="row">
+        {% for venda in vendas %}
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Venda #{{ venda.id }}</h5>
+                        <p class="card-text">
+                            <strong>Atendente:</strong> {{ venda.atendente }}<br>
+                            <strong>Total:</strong> R$ {{ venda.valor_total|floatformat:2 }}<br>
+                            <strong>Data:</strong> {{ venda.data_hora|date:"d/m/Y H:i" }}
+                        </p>
+                        <a href="{% url 'venda_detail' venda.id %}" class="btn btn-primary">Abrir</a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        Nenhuma venda aberta no momento
+    </div>
+{% endif %}
+{% endblock %}
