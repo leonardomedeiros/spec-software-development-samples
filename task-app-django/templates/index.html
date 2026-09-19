@@ -7,6 +7,9 @@
         <p class="text-muted mb-0">Controle de ciclo de vida de projetos e tarefas com conformidade arquitetural MVT + Clean Use Cases.</p>
     </div>
     <div class="col-md-6 text-md-end mt-3 mt-md-0 d-flex gap-2 justify-content-md-end flex-wrap">
+        <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#modalContract">
+            <i class="bi bi-file-earmark-plus me-1"></i> Novo Contrato
+        </button>
         <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalUser">
             <i class="bi bi-person-plus me-1"></i> Novo Usuário
         </button>
@@ -87,6 +90,50 @@
                 </a>
             {% endfor %}
         </div>
+    </div>
+</div>
+
+<!-- Contracts -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-text me-2"></i>Contratos</h5>
+            <span class="badge bg-info rounded-pill">{{ contracts|length }}</span>
+        </div>
+        {% if contracts %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Título</th>
+                            <th>Descrição</th>
+                            <th>Proprietário</th>
+                            <th>Arquivo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in contracts %}
+                            <tr>
+                                <td class="fw-semibold">{{ c.title }}</td>
+                                <td class="text-muted small">{{ c.description|truncatechars:80|default:"—" }}</td>
+                                <td>{{ c.owner_name|default:c.owner_id }}</td>
+                                <td>
+                                    {% if c.contract_file %}
+                                        <a href="{{ MEDIA_URL }}{{ c.contract_file }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-download me-1"></i>Baixar
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted small">Sem arquivo</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">Nenhum contrato cadastrado. Use o botão <strong>Novo Contrato</strong> para anexar um arquivo.</p>
+        {% endif %}
     </div>
 </div>
 
@@ -214,6 +261,50 @@
                 <div class="text-center py-4 text-muted small">Nenhuma tarefa concluída.</div>
             {% endfor %}
         </div>
+    </div>
+</div>
+
+<!-- MODAL: NOVO CONTRATO -->
+<div class="modal fade" id="modalContract" tabindex="-1" aria-labelledby="modalContractLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="/web/contracts" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalContractLabel"><i class="bi bi-file-earmark-plus me-2"></i>Novo Contrato</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título do Contrato *</label>
+                        <input type="text" name="title" class="form-control" placeholder="ex: Contrato de Prestação de Serviços" required maxlength="120">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Detalhes do contrato"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Proprietário (Owner) *</label>
+                        <select name="owner_id" class="form-select" required>
+                            {% for u in users %}
+                                <option value="{{ u.id }}">{{ u.name }} ({{ u.email }})</option>
+                            {% empty %}
+                                <option disabled selected>Cadastre um usuário primeiro</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Arquivo do Contrato</label>
+                        <input type="file" name="contract_file" class="form-control" accept=".pdf,.doc,.docx,.txt">
+                        <div class="form-text">Anexe o arquivo do contrato (ex: PDF). Opcional.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-info text-white" {% if not users %}disabled{% endif %}>Criar Contrato</button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 

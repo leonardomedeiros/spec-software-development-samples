@@ -17,6 +17,16 @@ class User:
 
 
 @dataclass
+class Contract:
+    id: UUID = field(default_factory=uuid4)
+    title: str = ""
+    description: str = ""
+    contract_file: Optional[str] = None
+    owner_id: Optional[UUID] = None
+    created_at: Optional[datetime] = None
+
+
+@dataclass
 class Project:
     id: UUID = field(default_factory=uuid4)
     title: str = ""

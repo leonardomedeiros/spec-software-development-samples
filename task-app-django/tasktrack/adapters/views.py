@@ -1,8 +1,11 @@
 import json
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import UUID, uuid4
 
 from django.contrib import messages
+from django.conf import settings
+from django.core.files.storage import default_storage
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
@@ -18,11 +21,14 @@ from ..domain.exceptions import (
     UserNotFoundError,
 )
 from ..infra.repositories import (
+    DjangoContractRepository,
     DjangoProjectRepository,
     DjangoTaskRepository,
     DjangoUserRepository,
 )
 from ..schemas.schemas import (
+    ContractResponseSchema,
+    CreateContractSchema,
     CreateProjectSchema,
     CreateTaskSchema,
     ProjectResponseSchema,
@@ -30,6 +36,7 @@ from ..schemas.schemas import (
     UpdateTaskStatusSchema,
 )
 from ..use_cases.use_cases import (
+    CreateContractUseCase,
     CreateProjectUseCase,
     CreateTaskUseCase,
     UpdateTaskStatusUseCase,
@@ -38,6 +45,7 @@ from ..use_cases.use_cases import (
 user_repo = DjangoUserRepository()
 project_repo = DjangoProjectRepository()
 task_repo = DjangoTaskRepository()
+contract_repo = DjangoContractRepository()
 
 
 def _format_pydantic_error(e: ValidationError) -> JsonResponse:
@@ -54,6 +62,18 @@ def _format_pydantic_error(e: ValidationError) -> JsonResponse:
             "type": err.get("type", "value_error"),
         })
     return JsonResponse({"detail": details}, status=422)
+
+
+def _save_contract_file(uploaded_file) -> Optional[str]:
+    """Persiste o arquivo anexado em MEDIA_ROOT e retorna o caminho relativo."""
+    if not uploaded_file:
+        return None
+    name = (uploaded_file.name or "contrato").replace("\\", "/").split("/")[-1]
+    if len(name) > 100:
+        parts = name.rsplit(".")
+        ext = f".{parts[-1]}" if len(parts) > 1 and len(parts[-1]) <= 10 else ""
+        name = name[:90] + ext
+    return default_storage.save(f"contracts/{uuid4()}_{name}", uploaded_file)
 
 
 # =====================================================================
@@ -80,6 +100,10 @@ def home_view(request):
     for t in tasks:
         t.assignee_name = user_map.get(t.assignee_id, "") if t.assignee_id else ""
 
+    contracts = contract_repo.list_all()
+    for c in contracts:
+        c.owner_name = user_map.get(c.owner_id, "") if c.owner_id else ""
+
     pending_tasks = [t for t in tasks if t.status == TaskStatus.PENDING]
     in_progress_tasks = [t for t in tasks if t.status == TaskStatus.IN_PROGRESS]
     completed_tasks = [t for t in tasks if t.status == TaskStatus.COMPLETED]
@@ -87,12 +111,48 @@ def home_view(request):
     context = {
         "projects": projects,
         "users": users,
+        "contracts": contracts,
         "selected_project_id": selected_project_id,
+        "MEDIA_URL": settings.MEDIA_URL,
         "pending_tasks": pending_tasks,
         "in_progress_tasks": in_progress_tasks,
         "completed_tasks": completed_tasks,
     }
     return render(request, "index.html", context)
+
+
+def web_create_contract_view(request):
+    if request.method == "POST":
+        title = request.POST.get("title", "")
+        description = request.POST.get("description", "")
+        owner_id_str = request.POST.get("owner_id", "")
+        contract_file = _save_contract_file(request.FILES.get("contract_file"))
+
+        try:
+            dto = CreateContractSchema(
+                title=title,
+                description=description,
+                contract_file=contract_file,
+                owner_id=UUID(owner_id_str),
+            )
+        except (ValidationError, ValueError) as e:
+            if isinstance(e, ValidationError):
+                msg = e.errors()[0].get("msg", "Dados do contrato inválidos.")
+            else:
+                msg = "UUID do proprietário inválido."
+            messages.error(request, f"Erro ao criar contrato: {msg}")
+            return redirect("/")
+
+        use_case = CreateContractUseCase(contract_repo=contract_repo, user_repo=user_repo)
+        try:
+            use_case.execute(dto)
+            messages.success(request, f"Contrato '{title}' criado com sucesso!")
+        except DomainError as e:
+            messages.error(request, f"Erro de domínio: {e}")
+        except Exception as e:
+            messages.error(request, f"Erro inesperado: {e}")
+
+    return redirect("/")
 
 
 def web_create_project_view(request):
@@ -197,6 +257,52 @@ def web_create_user_view(request):
 # =====================================================================
 # REST API ENDPOINTS
 # =====================================================================
+
+
+@csrf_exempt
+def contracts_view(request):
+    if request.method == "POST":
+        contract_file = None
+        if request.content_type and "multipart/form-data" in request.content_type:
+            raw_body = request.POST
+            contract_file = _save_contract_file(request.FILES.get("contract_file"))
+        else:
+            try:
+                raw_body = json.loads(request.body.decode("utf-8")) if request.body else {}
+            except json.JSONDecodeError:
+                return JsonResponse({"detail": "JSON inválido"}, status=422)
+            contract_file = raw_body.get("contract_file")
+
+        try:
+            dto = CreateContractSchema(
+                title=raw_body.get("title", ""),
+                description=raw_body.get("description"),
+                contract_file=contract_file,
+                owner_id=UUID(raw_body.get("owner_id", "")),
+            )
+        except ValidationError as e:
+            return _format_pydantic_error(e)
+        except ValueError:
+            return JsonResponse({"detail": "UUID do proprietário inválido"}, status=422)
+
+        use_case = CreateContractUseCase(contract_repo=contract_repo, user_repo=user_repo)
+        try:
+            contract = use_case.execute(dto)
+            response_dto = ContractResponseSchema(
+                id=contract.id,
+                title=contract.title,
+                description=contract.description,
+                contract_file=contract.contract_file,
+                owner_id=contract.owner_id,
+                created_at=contract.created_at,
+            )
+            return JsonResponse(response_dto.model_dump(mode="json"), status=201)
+        except UserNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=400)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"detail": "Método não permitido"}, status=405)
 
 
 @csrf_exempt

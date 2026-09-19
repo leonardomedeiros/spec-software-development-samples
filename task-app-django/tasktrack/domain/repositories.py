@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import UUID
-from ..domain.entities import Project, Task, User
+from ..domain.entities import Contract, Project, Task, User
 
 
 class IUserRepository(ABC):
@@ -29,6 +29,20 @@ class IProjectRepository(ABC):
 
     @abstractmethod
     def save(self, project: Project) -> Project:
+        pass
+
+
+class IContractRepository(ABC):
+    @abstractmethod
+    def get_by_id(self, contract_id: UUID) -> Optional[Contract]:
+        pass
+
+    @abstractmethod
+    def list_all(self) -> List[Contract]:
+        pass
+
+    @abstractmethod
+    def save(self, contract: Contract) -> Contract:
         pass
 
 

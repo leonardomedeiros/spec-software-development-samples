@@ -17,6 +17,23 @@ class UserModel(models.Model):
         db_table = "users"
 
 
+class ContractModel(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True, default="")
+    contract_file = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caminho do arquivo do contrato (ex: PDF).",
+    )
+    owner = models.ForeignKey(UserModel, on_delete=models.RESTRICT, related_name="contracts")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "contracts"
+
+
 class ProjectModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=120)

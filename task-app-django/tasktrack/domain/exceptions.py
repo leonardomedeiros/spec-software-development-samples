@@ -30,3 +30,10 @@ class UserNotFoundError(DomainError):
     def __init__(self, message: str = "Usuário atribuído não existe"):
         self.message = message
         super().__init__(self.message)
+
+
+class ContractNotFoundError(DomainError):
+    """Lançada quando um contrato não é encontrado."""
+    def __init__(self, message: str = "Contrato não encontrado"):
+        self.message = message
+        super().__init__(self.message)

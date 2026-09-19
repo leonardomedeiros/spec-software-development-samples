@@ -1,10 +1,10 @@
 from typing import Optional
 from uuid import UUID
 
-from ..domain.entities import Project, Task, User
+from ..domain.entities import Contract, Project, Task, User
 from ..domain.enums import TaskPriority, TaskStatus, UserRole
-from ..domain.repositories import IProjectRepository, ITaskRepository, IUserRepository
-from .models import ProjectModel, TaskModel, UserModel
+from ..domain.repositories import IContractRepository, IProjectRepository, ITaskRepository, IUserRepository
+from .models import ContractModel, ProjectModel, TaskModel, UserModel
 
 
 class DjangoUserRepository(IUserRepository):
@@ -44,6 +44,48 @@ class DjangoUserRepository(IUserRepository):
         )
         user.created_at = orm_user.created_at
         return user
+
+
+class DjangoContractRepository(IContractRepository):
+    def get_by_id(self, contract_id: UUID) -> Optional[Contract]:
+        try:
+            orm_contract = ContractModel.objects.get(id=contract_id)
+            return Contract(
+                id=orm_contract.id,
+                title=orm_contract.title,
+                description=orm_contract.description,
+                contract_file=orm_contract.contract_file,
+                owner_id=orm_contract.owner_id,
+                created_at=orm_contract.created_at,
+            )
+        except ContractModel.DoesNotExist:
+            return None
+
+    def list_all(self) -> list[Contract]:
+        return [
+            Contract(
+                id=c.id,
+                title=c.title,
+                description=c.description,
+                contract_file=c.contract_file,
+                owner_id=c.owner_id,
+                created_at=c.created_at,
+            )
+            for c in ContractModel.objects.all().order_by("-created_at")
+        ]
+
+    def save(self, contract: Contract) -> Contract:
+        orm_contract, _ = ContractModel.objects.update_or_create(
+            id=contract.id,
+            defaults={
+                "title": contract.title,
+                "description": contract.description,
+                "contract_file": contract.contract_file,
+                "owner_id": contract.owner_id,
+            },
+        )
+        contract.created_at = orm_contract.created_at
+        return contract
 
 
 class DjangoProjectRepository(IProjectRepository):

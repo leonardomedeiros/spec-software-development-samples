@@ -6,6 +6,29 @@ from pydantic import BaseModel, Field, field_validator
 from ..domain.enums import TaskPriority, TaskStatus
 
 
+class ContractResponseSchema(BaseModel):
+    id: UUID
+    title: str
+    description: Optional[str] = None
+    contract_file: Optional[str] = None
+    owner_id: UUID
+    created_at: datetime
+
+
+class CreateContractSchema(BaseModel):
+    title: str = Field(..., min_length=1, max_length=120)
+    description: Optional[str] = None
+    contract_file: Optional[str] = Field(None, max_length=255)
+    owner_id: UUID
+
+    @field_validator("title")
+    @classmethod
+    def validate_contract_title_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("O título não pode ser composto apenas por espaços em branco.")
+        return v.strip()
+
+
 class CreateProjectSchema(BaseModel):
     title: str = Field(..., min_length=1, max_length=120)
     description: Optional[str] = None

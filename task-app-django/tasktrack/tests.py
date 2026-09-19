@@ -1,9 +1,13 @@
+import shutil
+import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
-from django.test import TestCase
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 import pytest
 
-from tasktrack.domain.entities import Project, Task, User
+from tasktrack.domain.entities import Contract, Project, Task, User
 from tasktrack.domain.enums import TaskPriority, TaskStatus, UserRole
 from tasktrack.domain.exceptions import (
     InvalidStatusTransitionError,
@@ -12,21 +16,24 @@ from tasktrack.domain.exceptions import (
     UserNotFoundError,
 )
 from tasktrack.schemas.schemas import (
+    CreateContractSchema,
     CreateProjectSchema,
     CreateTaskSchema,
     UpdateTaskStatusSchema,
 )
 from tasktrack.use_cases.use_cases import (
+    CreateContractUseCase,
     CreateProjectUseCase,
     CreateTaskUseCase,
     UpdateTaskStatusUseCase,
 )
 from tasktrack.infra.repositories import (
+    DjangoContractRepository,
     DjangoProjectRepository,
     DjangoTaskRepository,
     DjangoUserRepository,
 )
-from tasktrack.infra.models import UserModel, ProjectModel, TaskModel
+from tasktrack.infra.models import ContractModel, UserModel, ProjectModel, TaskModel
 
 
 class TaskTrackUnitAndIntegrationTests(TestCase):
@@ -34,6 +41,11 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         self.user_repo = DjangoUserRepository()
         self.project_repo = DjangoProjectRepository()
         self.task_repo = DjangoTaskRepository()
+        self.contract_repo = DjangoContractRepository()
+
+        self.media_root = tempfile.mkdtemp()
+        self.override_media = override_settings(MEDIA_ROOT=self.media_root)
+        self.override_media.enable()
 
         # Cria usuário base
         self.user = self.user_repo.save(
@@ -54,6 +66,10 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
                 owner_id=self.user.id,
             )
         )
+
+    def tearDown(self):
+        self.override_media.disable()
+        shutil.rmtree(self.media_root, ignore_errors=True)
 
     # -------------------------------------------------------------
     # DOMAIN UNIT TESTS
@@ -208,3 +224,102 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         self.assertContains(response, "TaskTrack")
         self.assertContains(response, "Painel de Gestão de Tarefas")
         self.assertContains(response, self.project.title)
+
+    # -------------------------------------------------------------
+    # CONTRACTS (nova spec: tabela contracts com contract_file)
+    # -------------------------------------------------------------
+    def test_contract_schema_blank_title_rejected(self):
+        """Validação Pydantic: título de contrato não pode ser apenas espaços."""
+        with self.assertRaises(ValueError):
+            CreateContractSchema(
+                title="   ",
+                description="Sem título válido.",
+                owner_id=self.user.id,
+            )
+
+    def test_create_contract_use_case_success(self):
+        """Use case: cria contrato com arquivo e persiste via repositório."""
+        dto = CreateContractSchema(
+            title="Contrato de Prestação de Serviços",
+            description="Acordo comercial para o e-commerce.",
+            contract_file="contracts/contrato_2026.pdf",
+            owner_id=self.user.id,
+        )
+        use_case = CreateContractUseCase(self.contract_repo, self.user_repo)
+        contract = use_case.execute(dto)
+
+        self.assertIsNotNone(contract.id)
+        self.assertEqual(contract.title, dto.title)
+        self.assertEqual(contract.contract_file, "contracts/contrato_2026.pdf")
+        self.assertEqual(self.contract_repo.get_by_id(contract.id).title, dto.title)
+
+    def test_create_contract_use_case_owner_not_found(self):
+        """Use case: proprietário inexistente deve gerar UserNotFoundError."""
+        dto = CreateContractSchema(
+            title="Contrato sem dono",
+            owner_id=uuid.uuid4(),
+        )
+        use_case = CreateContractUseCase(self.contract_repo, self.user_repo)
+        with self.assertRaises(UserNotFoundError):
+            use_case.execute(dto)
+
+    def test_api_create_contract_json(self):
+        """API: POST /api/v1/contracts com JSON retorna 201 e contract_file."""
+        payload = {
+            "title": "Contrato via API",
+            "description": "Cadastrado por JSON.",
+            "owner_id": str(self.user.id),
+        }
+        response = self.client.post(
+            "/api/v1/contracts",
+            data=payload,
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(data["title"], payload["title"])
+        self.assertIn("id", data)
+        self.assertIsNone(data["contract_file"])
+
+    def test_api_create_contract_multipart_file_upload(self):
+        """API: POST /api/v1/contracts multipart anexa arquivo e salva caminho."""
+        uploaded = SimpleUploadedFile(
+            "contrato.pdf",
+            b"%PDF-1.4 fake content",
+            content_type="application/pdf",
+        )
+        response = self.client.post(
+            "/api/v1/contracts",
+            data={
+                "title": "Contrato com Arquivo",
+                "description": "Anexo enviado por multipart.",
+                "owner_id": str(self.user.id),
+                "contract_file": uploaded,
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertTrue(data["contract_file"].startswith("contracts/"))
+        self.assertEqual(data["contract_file"].split("_", 1)[1], "contrato.pdf")
+
+    def test_web_create_contract_with_file(self):
+        """Web: POST /web/contracts com arquivo redireciona e persiste contrato."""
+        uploaded = SimpleUploadedFile(
+            "termo.txt",
+            b"conteudo do termo",
+            content_type="text/plain",
+        )
+        response = self.client.post(
+            "/web/contracts",
+            data={
+                "title": "Termo de Adesão",
+                "description": "Regras de uso.",
+                "owner_id": str(self.user.id),
+                "contract_file": uploaded,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(ContractModel.objects.count(), 1)
+        contract = ContractModel.objects.get()
+        self.assertEqual(contract.title, "Termo de Adesão")
+        self.assertTrue(contract.contract_file.startswith("contracts/"))

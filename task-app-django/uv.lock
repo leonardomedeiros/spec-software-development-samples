@@ -381,6 +381,7 @@ dependencies = [
     { name = "django" },
     { name = "psycopg2-binary" },
     { name = "pydantic" },
+    { name = "pytest" },
     { name = "python-decouple" },
 ]
 
@@ -396,6 +397,7 @@ requires-dist = [
     { name = "django", specifier = ">=5.0,<6.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.9" },
     { name = "pydantic", specifier = ">=2.0,<3.0" },
+    { name = "pytest", specifier = ">=9.1.1" },
     { name = "python-decouple", specifier = ">=3.8" },
 ]
 

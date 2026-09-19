@@ -1,9 +1,11 @@
 from django.urls import path
 from .views import (
+    contracts_view,
     home_view,
     project_tasks_view,
     projects_view,
     task_status_view,
+    web_create_contract_view,
     web_create_project_view,
     web_create_task_view,
     web_create_user_view,
@@ -13,12 +15,15 @@ from .views import (
 urlpatterns = [
     # Web UI (MVT)
     path("", home_view, name="home"),
+    path("web/contracts", web_create_contract_view, name="web_create_contract"),
     path("web/projects", web_create_project_view, name="web_create_project"),
     path("web/tasks", web_create_task_view, name="web_create_task"),
     path("web/tasks/<str:task_id>/status", web_update_task_status_view, name="web_update_task_status"),
     path("web/users", web_create_user_view, name="web_create_user"),
 
     # REST API Endpoints (v1)
+    path("api/v1/contracts", contracts_view, name="create_contract"),
+    path("api/v1/contracts/", contracts_view, name="create_contract_slash"),
     path("api/v1/projects", projects_view, name="create_project"),
     path("api/v1/projects/", projects_view, name="create_project_slash"),
     path("api/v1/projects/<str:project_id>/tasks", project_tasks_view, name="create_task"),

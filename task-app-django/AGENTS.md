@@ -89,6 +89,7 @@ A aplicação deve seguir uma separação clara de responsabilidades:
 
 ### 5.1 Entidades Principais
 - **User:** `id` (UUID), `name` (VARCHAR 100), `email` (VARCHAR 255 UNIQUE), `role` (`ADMIN` | `MEMBER`), `created_at`.
+- **Contract:** `id` (UUID), `title` (VARCHAR 120), `description` (TEXT), `contract_file` (VARCHAR 255, caminho do arquivo do contrato anexado via MEDIA_ROOT), `owner_id` (FK User ON DELETE RESTRICT), `created_at`.
 - **Project:** `id` (UUID), `title` (VARCHAR 120), `description` (TEXT), `owner_id` (FK User ON DELETE RESTRICT), `created_at`.
 - **Task:** `id` (UUID), `project_id` (FK Project ON DELETE CASCADE), `title` (VARCHAR 100), `description` (TEXT), `status` (`PENDING` | `IN_PROGRESS` | `COMPLETED`), `priority` (`LOW` | `MEDIUM` | `HIGH`), `assignee_id` (FK User ON DELETE SET NULL, opcional), `due_date` (TIMESTAMP WITH TIME ZONE), `created_at`, `updated_at`.
 

@@ -1,11 +1,32 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from ..domain.entities import Project, Task
+from ..domain.entities import Contract, Project, Task
 from ..domain.enums import TaskStatus
 from ..domain.exceptions import ProjectNotFoundError, TaskNotFoundError, UserNotFoundError
-from ..domain.repositories import IProjectRepository, ITaskRepository, IUserRepository
-from ..schemas.schemas import CreateProjectSchema, CreateTaskSchema, UpdateTaskStatusSchema
+from ..domain.repositories import IContractRepository, IProjectRepository, ITaskRepository, IUserRepository
+from ..schemas.schemas import CreateContractSchema, CreateProjectSchema, CreateTaskSchema, UpdateTaskStatusSchema
+
+
+class CreateContractUseCase:
+    def __init__(self, contract_repo: IContractRepository, user_repo: IUserRepository):
+        self.contract_repo = contract_repo
+        self.user_repo = user_repo
+
+    def execute(self, dto: CreateContractSchema) -> Contract:
+        owner = self.user_repo.get_by_id(dto.owner_id)
+        if not owner:
+            raise UserNotFoundError("Usuário proprietário não encontrado.")
+
+        contract = Contract(
+            id=uuid4(),
+            title=dto.title,
+            description=dto.description or "",
+            contract_file=dto.contract_file,
+            owner_id=dto.owner_id,
+            created_at=datetime.now(timezone.utc),
+        )
+        return self.contract_repo.save(contract)
 
 
 class CreateProjectUseCase:
