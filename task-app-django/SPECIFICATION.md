@@ -45,6 +45,7 @@ CREATE TABLE contracts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(120) NOT NULL,
     description TEXT,
+    contract_file VARCHAR(255), -- caminho do arquivo do contrato (ex: PDF)
     owner_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -76,6 +77,7 @@ CREATE TABLE tasks (
 ```
 
 ### 2.2 Relacionamentos
+* **Contract -> Project:** 1 Contrato possui N Projetos (1:N). Ao excluir um Contrato, seus Projetos são excluídas em cascata (`CASCADE`).
 * **User -> Project:** 1 Usuário pode ser proprietário (*owner*) de N Projetos (1:N).
 * **Project -> Task:** 1 Projeto possui N Tarefas (1:N). Ao excluir um Projeto, suas Tarefas são excluídas em cascata (`CASCADE`).
 * **User -> Task:** 1 Usuário pode ser atribuído como responsável a N Tarefas (1:N).
@@ -87,21 +89,28 @@ CREATE TABLE tasks (
 A aplicação disponibiliza uma interface visual completa renderizada via Django Templates e estilizada com Bootstrap 5:
 
 ### 3.1 Página Inicial / Dashboard (`GET /`)
+* **Rota:** `/contract` (ou `/?contract_id={uuid}`)
 * **Rota:** `/` (ou `/?project_id={uuid}`)
-* **Pré-requisito de inicialização:** Antes de acessar a rota, executar `python manage.py migrate`. A migration inicial `tasktrack.0001_initial` cria as tabelas `users`, `projects` e `tasks` consultadas pelo dashboard.
+* **Pré-requisito de inicialização:** Antes de acessar a rota, executar `python manage.py migrate`. A migration inicial `tasktrack.0001_initial` cria as tabelas `users`, `contracts`, `projects` e `tasks` consultadas pelo dashboard.
 * **Recursos visuais:**
   * **Barra de Métricas:** Contadores em tempo real do total de Projetos, Tarefas Pendentes, Em Andamento e Concluídas.
   * **Filtro por Projeto:** Navegação rápida para filtrar as tarefas por projeto selecionado.
+  * **Status dos Contratos:** Dividido em 3 colunas de status:
+    * `PROSPECTING` (Pendentes): Cartões com badge de prioridade, prazo e botão *"Iniciar"* para transição direta para `IN_PROGRESS`.
+    * `IN_PROGRESS` (Em Andamento): Contrato em Assinatura com botões *"Voltar"* (para `PROSPECTING`) e *"Concluir"* (para `SIGNED`).
+    * `SIGNED` (Assinados): Contrato Aprovado
   * **Quadro Kanban de Tarefas:** Dividido em 3 colunas de status:
     * `PENDING` (Pendentes): Cartões com badge de prioridade, prazo e botão *"Iniciar"* para transição direta para `IN_PROGRESS`.
     * `IN_PROGRESS` (Em Andamento): Cartões com botões *"Voltar"* (para `PENDING`) e *"Concluir"* (para `COMPLETED`).
     * `COMPLETED` (Concluídas): Cartões arquivados, aplicando a **RN-04** (bloqueio de reabertura).
   * **Modais Interativos:**
+    * Modal de Criação do Contrato.
     * Modal de Criação de Projeto.
     * Modal de Cadastro de Tarefa (com seleção de prioridade, projeto, responsável e data de vencimento).
     * Modal de Cadastro de Usuários (para membros da equipe).
 
 ### 3.2 Ações e Formulários Web
+* **Adcionar Contrato:** `POST /web/contracts` (Campos: `title`, `description`, `contract_file`, `owner_id`).
 * **Criar Projeto:** `POST /web/projects` (Campos: `title`, `description`, `owner_id`).
 * **Cadastrar Tarefa:** `POST /web/tasks` (Campos: `project_id`, `title`, `description`, `priority`, `assignee_id`, `due_date`).
 * **Alterar Status:** `POST /web/tasks/{task_id}/status` (Campo: `status`).
@@ -111,7 +120,35 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ## 4. Contratos de API REST (v1)
 
-### 4.1 Criar Projeto
+
+### 4.1 Adicionar Contrato
+* **Endpoint:** `POST /api/v1/contracts`
+* **Descrição:** Adicionar um novo contrato ao sistema.
+* **Headers:** `Content-Type: application/json`
+* **Request Body:**
+```json
+{
+  "title": "Contrato com Empresa XX",
+  "description": "Contrato de projeto para migração da vitrine de produtos.",
+  "contract_file": "filetest.pdf",
+  "owner_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
+}
+```
+* **Respostas:**
+  * `201 Added`:
+```json
+{
+  "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "title": "Contrato do E-commerce com XX",
+  "description": "Contrato do Projeto",
+  "owner_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+  "created_at": "2026-09-11T08:00:00Z"
+}
+```
+  * `400 Bad Request`: Usuário proprietário não encontrado.
+  * `422 Unprocessable Entity`: Dados de entrada inválidos.
+
+### 4.2 Criar Projeto
 * **Endpoint:** `POST /api/v1/projects`
 * **Descrição:** Cria um novo projeto no sistema.
 * **Headers:** `Content-Type: application/json`
@@ -139,7 +176,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ---
 
-### 4.2 Criar Tarefa
+### 4.3 Criar Tarefa
 * **Endpoint:** `POST /api/v1/projects/{project_id}/tasks`
 * **Descrição:** Cadastra uma nova tarefa vinculada a um projeto existente.
 * **Path Parameter:** `project_id` (UUID)
@@ -174,7 +211,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ---
 
-### 4.3 Atualizar Status da Tarefa
+### 4.4 Atualizar Status da Tarefa
 * **Endpoint:** `PATCH /api/v1/tasks/{task_id}/status`
 * **Descrição:** Altera o status de uma tarefa específica.
 * **Path Parameter:** `task_id` (UUID)
@@ -216,7 +253,22 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 Estes cenários devem orientar a geração de testes automatizados com `pytest` e `httpx`.
 
-### Cenário 1: Sucesso na Criação de Tarefa
+### Cenário 1: Sucesso na Criação do Contrato
+* **Dado** que existe um projeto cadastrado com `id = "f47ac10b-58cc-4372-a567-0e02b2c3d479"`
+* **Quando** for enviada uma requisição `POST` para `/api/v1/projects/f47ac10b-58cc-4372-a567-0e02b2c3d479/contracts` com o payload:
+  ```json
+  {
+    "title": "Criar Contrato",
+    "description": "Cobrir casos felizes e de erro.",
+    "priority": "HIGH",
+    "due_date": "2026-12-31T23:59:59Z"
+  }
+  ```
+* **Então** o código de status HTTP retornado deve ser `201 Created`
+* **E** o corpo da resposta deve conter o campo `id` em formato UUID
+
+
+### Cenário 2: Sucesso na Criação de Tarefa
 * **Dado** que existe um projeto cadastrado com `id = "f47ac10b-58cc-4372-a567-0e02b2c3d479"`
 * **Quando** for enviada uma requisição `POST` para `/api/v1/projects/f47ac10b-58cc-4372-a567-0e02b2c3d479/tasks` com o payload:
   ```json
@@ -231,7 +283,7 @@ Estes cenários devem orientar a geração de testes automatizados com `pytest` 
 * **E** o corpo da resposta deve conter o campo `id` em formato UUID
 * **E** o campo `status` deve ser inicializado automaticamente como `"PENDING"`.
 
-### Cenário 2: Falha por Data Retroativa
+### Cenário 3: Falha por Data Retroativa
 * **Dado** que a data atual é `2026-09-12`
 * **Quando** for enviada uma requisição `POST` com `due_date = "2025-01-01T00:00:00Z"`
 * **Então** o código de status HTTP retornado deve ser `422 Unprocessable Entity`
@@ -248,7 +300,7 @@ Estes cenários devem orientar a geração de testes automatizados com `pytest` 
   }
   ```
 
-### Cenário 3: Transição Inválida de Status
+### Cenário 4: Transição Inválida de Status
 * **Dado** uma tarefa salva no banco com status `COMPLETED`
 * **Quando** for enviada uma requisição `PATCH` para `/api/v1/tasks/{task_id}/status` com `{"status": "IN_PROGRESS"}`
 * **Então** o status HTTP deve ser `400 Bad Request`
