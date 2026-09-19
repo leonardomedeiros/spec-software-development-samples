@@ -1,11 +1,12 @@
 import os
+from decouple import config
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-tasktrack-secret-key-development"
+SECRET_KEY =  config("DJANGO_SECRET_KEY")
 
-DEBUG = True
+DEBUG =  config("DEBUG", default=False, cast=bool)
 
 ALLOWED_HOSTS = ["*"]
 
