@@ -2,9 +2,9 @@ from typing import Optional
 from uuid import UUID
 
 from ..domain.entities import Contract, Project, Task, User
-from ..domain.enums import TaskPriority, TaskStatus, UserRole
+from ..domain.enums import ContractStatus, TaskPriority, TaskStatus, UserRole
 from ..domain.repositories import IContractRepository, IProjectRepository, ITaskRepository, IUserRepository
-from .models import ContractModel, ProjectModel, TaskModel, UserModel
+from .models import ContractModel, ProjectMembershipModel, ProjectModel, TaskModel, UserModel
 
 
 class DjangoUserRepository(IUserRepository):
@@ -55,6 +55,7 @@ class DjangoContractRepository(IContractRepository):
                 title=orm_contract.title,
                 description=orm_contract.description,
                 contract_file=orm_contract.contract_file,
+                status=ContractStatus(orm_contract.status),
                 owner_id=orm_contract.owner_id,
                 created_at=orm_contract.created_at,
             )
@@ -68,6 +69,7 @@ class DjangoContractRepository(IContractRepository):
                 title=c.title,
                 description=c.description,
                 contract_file=c.contract_file,
+                status=ContractStatus(c.status),
                 owner_id=c.owner_id,
                 created_at=c.created_at,
             )
@@ -81,6 +83,7 @@ class DjangoContractRepository(IContractRepository):
                 "title": contract.title,
                 "description": contract.description,
                 "contract_file": contract.contract_file,
+                "status": contract.status.value,
                 "owner_id": contract.owner_id,
             },
         )
@@ -94,6 +97,7 @@ class DjangoProjectRepository(IProjectRepository):
             orm_proj = ProjectModel.objects.get(id=project_id)
             return Project(
                 id=orm_proj.id,
+                contract_id=orm_proj.contract_id,
                 title=orm_proj.title,
                 description=orm_proj.description,
                 owner_id=orm_proj.owner_id,
@@ -106,6 +110,7 @@ class DjangoProjectRepository(IProjectRepository):
         return [
             Project(
                 id=p.id,
+                contract_id=p.contract_id,
                 title=p.title,
                 description=p.description,
                 owner_id=p.owner_id,
@@ -118,6 +123,7 @@ class DjangoProjectRepository(IProjectRepository):
         orm_proj, _ = ProjectModel.objects.update_or_create(
             id=project.id,
             defaults={
+                "contract_id": project.contract_id,
                 "title": project.title,
                 "description": project.description,
                 "owner_id": project.owner_id,
@@ -125,6 +131,24 @@ class DjangoProjectRepository(IProjectRepository):
         )
         project.created_at = orm_proj.created_at
         return project
+
+    def list_team_members(self, project_id: UUID) -> list[User]:
+        return [
+            User(
+                id=membership.user.id,
+                name=membership.user.name,
+                email=membership.user.email,
+                role=UserRole(membership.user.role),
+                created_at=membership.user.created_at,
+            )
+            for membership in ProjectMembershipModel.objects.filter(project_id=project_id).select_related("user").order_by("user__name")
+        ]
+
+    def add_team_member(self, project_id: UUID, user_id: UUID) -> None:
+        ProjectMembershipModel.objects.get_or_create(project_id=project_id, user_id=user_id)
+
+    def remove_team_member(self, project_id: UUID, user_id: UUID) -> None:
+        ProjectMembershipModel.objects.filter(project_id=project_id, user_id=user_id).delete()
 
 
 class DjangoTaskRepository(ITaskRepository):

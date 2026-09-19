@@ -7,6 +7,18 @@ class TaskStatus(str, Enum):
     COMPLETED = "COMPLETED"
 
 
+class ContractStatus(str, Enum):
+    PROSPECTING = "PROSPECTING"
+    IN_PROGRESS = "IN_PROGRESS"
+    SIGNED = "SIGNED"
+
+
+class ProjectStatus(str, Enum):
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+
+
 class TaskPriority(str, Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"

@@ -9,6 +9,9 @@ from .views import (
     web_create_project_view,
     web_create_task_view,
     web_create_user_view,
+    web_update_contract_status_view,
+    web_update_project_status_view,
+    web_update_project_team_view,
     web_update_task_status_view,
 )
 
@@ -17,6 +20,9 @@ urlpatterns = [
     path("", home_view, name="home"),
     path("web/contracts", web_create_contract_view, name="web_create_contract"),
     path("web/projects", web_create_project_view, name="web_create_project"),
+    path("web/contracts/<str:contract_id>/status", web_update_contract_status_view, name="web_update_contract_status"),
+    path("web/projects/<str:project_id>/status", web_update_project_status_view, name="web_update_project_status"),
+    path("web/projects/<str:project_id>/team", web_update_project_team_view, name="web_update_project_team"),
     path("web/tasks", web_create_task_view, name="web_create_task"),
     path("web/tasks/<str:task_id>/status", web_update_task_status_view, name="web_update_task_status"),
     path("web/users", web_create_user_view, name="web_create_user"),

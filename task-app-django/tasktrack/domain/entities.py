@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
-from .enums import TaskPriority, TaskStatus, UserRole
+from .enums import ContractStatus, TaskPriority, TaskStatus, UserRole
 from .exceptions import InvalidStatusTransitionError
 
 
@@ -22,13 +22,27 @@ class Contract:
     title: str = ""
     description: str = ""
     contract_file: Optional[str] = None
+    status: ContractStatus = ContractStatus.PROSPECTING
     owner_id: Optional[UUID] = None
     created_at: Optional[datetime] = None
+
+    def change_status(self, new_status: ContractStatus) -> None:
+        allowed_transitions = {
+            ContractStatus.PROSPECTING: [ContractStatus.IN_PROGRESS],
+            ContractStatus.IN_PROGRESS: [ContractStatus.PROSPECTING, ContractStatus.SIGNED],
+            ContractStatus.SIGNED: [],
+        }
+        if new_status != self.status and new_status not in allowed_transitions[self.status]:
+            raise InvalidStatusTransitionError(
+                f"Transição inválida de {self.status.value} para {new_status.value}."
+            )
+        self.status = new_status
 
 
 @dataclass
 class Project:
     id: UUID = field(default_factory=uuid4)
+    contract_id: Optional[UUID] = None
     title: str = ""
     description: str = ""
     owner_id: Optional[UUID] = None

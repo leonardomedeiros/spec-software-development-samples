@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
-from ..domain.enums import TaskPriority, TaskStatus
+from ..domain.enums import ContractStatus, ProjectStatus, TaskPriority, TaskStatus
 
 
 class ContractResponseSchema(BaseModel):
@@ -11,6 +11,7 @@ class ContractResponseSchema(BaseModel):
     title: str
     description: Optional[str] = None
     contract_file: Optional[str] = None
+    status: ContractStatus
     owner_id: UUID
     created_at: datetime
 
@@ -29,7 +30,16 @@ class CreateContractSchema(BaseModel):
         return v.strip()
 
 
+class UpdateContractStatusSchema(BaseModel):
+    status: ContractStatus
+
+
+class UpdateProjectStatusSchema(BaseModel):
+    status: ProjectStatus
+
+
 class CreateProjectSchema(BaseModel):
+    contract_id: UUID
     title: str = Field(..., min_length=1, max_length=120)
     description: Optional[str] = None
     owner_id: UUID
@@ -44,6 +54,7 @@ class CreateProjectSchema(BaseModel):
 
 class ProjectResponseSchema(BaseModel):
     id: UUID
+    contract_id: UUID
     title: str
     description: Optional[str] = None
     owner_id: UUID

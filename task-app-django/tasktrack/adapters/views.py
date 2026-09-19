@@ -12,7 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from pydantic import ValidationError
 
 from ..domain.entities import User
-from ..domain.enums import TaskPriority, TaskStatus, UserRole
+from ..domain.enums import ContractStatus, ProjectStatus, TaskPriority, TaskStatus, UserRole
 from ..domain.exceptions import (
     DomainError,
     InvalidStatusTransitionError,
@@ -33,12 +33,18 @@ from ..schemas.schemas import (
     CreateTaskSchema,
     ProjectResponseSchema,
     TaskResponseSchema,
+    UpdateContractStatusSchema,
+    UpdateProjectStatusSchema,
     UpdateTaskStatusSchema,
 )
 from ..use_cases.use_cases import (
     CreateContractUseCase,
     CreateProjectUseCase,
     CreateTaskUseCase,
+    AddProjectTeamMemberUseCase,
+    RemoveProjectTeamMemberUseCase,
+    UpdateContractStatusUseCase,
+    UpdateProjectStatusUseCase,
     UpdateTaskStatusUseCase,
 )
 
@@ -104,6 +110,23 @@ def home_view(request):
     for c in contracts:
         c.owner_name = user_map.get(c.owner_id, "") if c.owner_id else ""
 
+    tasks_by_project = {}
+    for task in tasks:
+        tasks_by_project.setdefault(task.project_id, []).append(task)
+    for project in projects:
+        project_tasks = tasks_by_project.get(project.id, [])
+        statuses = {task.status for task in project_tasks}
+        if project_tasks and statuses == {TaskStatus.COMPLETED}:
+            project.dashboard_status = TaskStatus.COMPLETED
+        elif TaskStatus.IN_PROGRESS in statuses:
+            project.dashboard_status = TaskStatus.IN_PROGRESS
+        elif project_tasks:
+            project.dashboard_status = TaskStatus.PENDING
+        else:
+            project.dashboard_status = None
+        project.team_members = project_repo.list_team_members(project.id)
+        project.team_member_ids = {member.id for member in project.team_members}
+
     pending_tasks = [t for t in tasks if t.status == TaskStatus.PENDING]
     in_progress_tasks = [t for t in tasks if t.status == TaskStatus.IN_PROGRESS]
     completed_tasks = [t for t in tasks if t.status == TaskStatus.COMPLETED]
@@ -160,14 +183,16 @@ def web_create_project_view(request):
         title = request.POST.get("title", "")
         description = request.POST.get("description", "")
         owner_id_str = request.POST.get("owner_id", "")
+        contract_id_str = request.POST.get("contract_id", "")
 
         try:
             dto = CreateProjectSchema(
                 title=title,
                 description=description,
                 owner_id=UUID(owner_id_str),
+                contract_id=UUID(contract_id_str),
             )
-            use_case = CreateProjectUseCase(project_repo=project_repo, user_repo=user_repo)
+            use_case = CreateProjectUseCase(project_repo=project_repo, user_repo=user_repo, contract_repo=contract_repo)
             use_case.execute(dto)
             messages.success(request, f"Projeto '{title}' criado com sucesso!")
         except ValidationError as e:
@@ -178,6 +203,49 @@ def web_create_project_view(request):
         except Exception as e:
             messages.error(request, f"Erro inesperado: {e}")
 
+    return redirect("/")
+
+
+def web_update_contract_status_view(request, contract_id: str):
+    if request.method == "POST":
+        try:
+            dto = UpdateContractStatusSchema(status=ContractStatus(request.POST.get("status", "")))
+            UpdateContractStatusUseCase(contract_repo).execute(UUID(contract_id), dto)
+            messages.success(request, "Status do contrato atualizado!")
+        except (ValidationError, ValueError):
+            messages.error(request, "Status de contrato inválido.")
+        except DomainError as e:
+            messages.error(request, f"Erro ao alterar contrato: {e}")
+    return redirect("/")
+
+
+def web_update_project_status_view(request, project_id: str):
+    if request.method == "POST":
+        try:
+            dto = UpdateProjectStatusSchema(status=ProjectStatus(request.POST.get("status", "")))
+            UpdateProjectStatusUseCase(project_repo, task_repo).execute(UUID(project_id), dto)
+            messages.success(request, "Status do projeto atualizado!")
+        except (ValidationError, ValueError):
+            messages.error(request, "Status de projeto inválido.")
+        except DomainError as e:
+            messages.error(request, f"Erro ao alterar projeto: {e}")
+    return redirect("/")
+
+
+def web_update_project_team_view(request, project_id: str):
+    if request.method == "POST":
+        try:
+            user_id = UUID(request.POST.get("user_id", ""))
+            if request.POST.get("action") == "remove":
+                RemoveProjectTeamMemberUseCase(project_repo).execute(UUID(project_id), user_id)
+                messages.success(request, "Membro removido da equipe do projeto!")
+            else:
+                AddProjectTeamMemberUseCase(project_repo, user_repo).execute(UUID(project_id), user_id)
+                messages.success(request, "Membro adicionado à equipe do projeto!")
+        except (ValidationError, ValueError):
+            messages.error(request, "Usuário inválido.")
+        except DomainError as e:
+            messages.error(request, f"Erro ao alterar equipe: {e}")
     return redirect("/")
 
 
@@ -293,6 +361,7 @@ def contracts_view(request):
                 title=contract.title,
                 description=contract.description,
                 contract_file=contract.contract_file,
+                status=contract.status,
                 owner_id=contract.owner_id,
                 created_at=contract.created_at,
             )
@@ -318,11 +387,12 @@ def projects_view(request):
         except ValidationError as e:
             return _format_pydantic_error(e)
 
-        use_case = CreateProjectUseCase(project_repo=project_repo, user_repo=user_repo)
+        use_case = CreateProjectUseCase(project_repo=project_repo, user_repo=user_repo, contract_repo=contract_repo)
         try:
             project = use_case.execute(dto)
             response_dto = ProjectResponseSchema(
                 id=project.id,
+                contract_id=project.contract_id,
                 title=project.title,
                 description=project.description,
                 owner_id=project.owner_id,

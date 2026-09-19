@@ -31,6 +31,18 @@ class IProjectRepository(ABC):
     def save(self, project: Project) -> Project:
         pass
 
+    @abstractmethod
+    def list_team_members(self, project_id: UUID) -> List[User]:
+        pass
+
+    @abstractmethod
+    def add_team_member(self, project_id: UUID, user_id: UUID) -> None:
+        pass
+
+    @abstractmethod
+    def remove_team_member(self, project_id: UUID, user_id: UUID) -> None:
+        pass
+
 
 class IContractRepository(ABC):
     @abstractmethod

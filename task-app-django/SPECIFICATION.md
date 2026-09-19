@@ -46,6 +46,7 @@ CREATE TABLE contracts (
     title VARCHAR(120) NOT NULL,
     description TEXT,
     contract_file VARCHAR(255), -- caminho do arquivo do contrato (ex: PDF)
+    status VARCHAR(20) NOT NULL DEFAULT 'PROSPECTING', -- 'PROSPECTING', 'IN_PROGRESS', 'SIGNED'
     owner_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -60,6 +61,14 @@ CREATE TABLE projects (
     owner_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+  -- Membros das equipes de projeto
+  CREATE TABLE project_memberships (
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (project_id, user_id)
+  );
 
 -- Tabela de Tarefas
 CREATE TABLE tasks (
@@ -82,6 +91,29 @@ CREATE TABLE tasks (
 * **Project -> Task:** 1 Projeto possui N Tarefas (1:N). Ao excluir um Projeto, suas Tarefas são excluídas em cascata (`CASCADE`).
 * **User -> Task:** 1 Usuário pode ser atribuído como responsável a N Tarefas (1:N).
 
+### 2.4 Equipes de Projetos
+
+* Um projeto pode possuir vários membros e um usuário pode participar de vários projetos (N:N), por meio da tabela `project_memberships`.
+* A combinação `project_id` + `user_id` é única; adicionar um membro já vinculado não cria duplicidade.
+* Ao excluir um projeto ou usuário, seus vínculos de equipe são removidos em cascata.
+* O proprietário do projeto continua sendo armazenado em `projects.owner_id`; membros da equipe são usuários adicionais autorizados a participar do projeto.
+
+### 2.3 Status de Contratos e Projetos
+
+* **Contrato:** o campo `status` aceita `PROSPECTING`, `IN_PROGRESS` ou `SIGNED`, iniciando em `PROSPECTING`.
+  * Transições permitidas: `PROSPECTING` -> `IN_PROGRESS`, `IN_PROGRESS` -> `PROSPECTING` e `IN_PROGRESS` -> `SIGNED`.
+  * `SIGNED` é um estado final e não pode retornar para outro status.
+* **Projeto:** o status é calculado a partir das tarefas relacionadas e não é armazenado como uma coluna própria:
+  * `PENDING` quando houver tarefas pendentes e nenhuma tarefa em andamento;
+  * `IN_PROGRESS` quando houver ao menos uma tarefa em andamento;
+  * `COMPLETED` quando todas as tarefas estiverem concluídas;
+  * `NO_TASKS` quando o projeto não possuir tarefas.
+  * A alteração para `PENDING` move as tarefas do projeto para `PENDING`;
+  * A alteração para `IN_PROGRESS` move as tarefas pendentes para `IN_PROGRESS`;
+  * A alteração para `COMPLETED` conclui as tarefas pendentes ou em andamento;
+  * Não é permitido reabrir um projeto com tarefas `COMPLETED` para `PENDING` ou `IN_PROGRESS`.
+* O dashboard deve exibir os contratos e projetos com seus status e oferecer controles para alterá-los.
+
 ---
 
 ## 3. Interface Gráfica WEB (Django Templates + Bootstrap 5)
@@ -99,6 +131,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * `PROSPECTING` (Pendentes): Cartões com badge de prioridade, prazo e botão *"Iniciar"* para transição direta para `IN_PROGRESS`.
     * `IN_PROGRESS` (Em Andamento): Contrato em Assinatura com botões *"Voltar"* (para `PROSPECTING`) e *"Concluir"* (para `SIGNED`).
     * `SIGNED` (Assinados): Contrato Aprovado
+  * **Equipes dos Projetos:** Cada projeto deve exibir seus membros e oferecer controles para adicionar ou remover usuários, sem permitir duplicidades.
   * **Quadro Kanban de Tarefas:** Dividido em 3 colunas de status:
     * `PENDING` (Pendentes): Cartões com badge de prioridade, prazo e botão *"Iniciar"* para transição direta para `IN_PROGRESS`.
     * `IN_PROGRESS` (Em Andamento): Cartões com botões *"Voltar"* (para `PENDING`) e *"Concluir"* (para `COMPLETED`).
@@ -112,6 +145,9 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 ### 3.2 Ações e Formulários Web
 * **Adcionar Contrato:** `POST /web/contracts` (Campos: `title`, `description`, `contract_file`, `owner_id`).
 * **Criar Projeto:** `POST /web/projects` (Campos: `title`, `description`, `owner_id`).
+* **Alterar status do contrato:** `POST /web/contracts/{contract_id}/status` (Campo: `status`).
+* **Alterar status do projeto:** `POST /web/projects/{project_id}/status` (Campo: `status`). A operação sincroniza o status das tarefas do projeto conforme as regras da seção 2.3.
+* **Gerenciar equipe do projeto:** `POST /web/projects/{project_id}/team` (Campos: `action` com `add` ou `remove`, e `user_id`).
 * **Cadastrar Tarefa:** `POST /web/tasks` (Campos: `project_id`, `title`, `description`, `priority`, `assignee_id`, `due_date`).
 * **Alterar Status:** `POST /web/tasks/{task_id}/status` (Campo: `status`).
 * **Cadastrar Usuário:** `POST /web/users` (Campos: `name`, `email`, `role`).
@@ -141,6 +177,8 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "title": "Contrato do E-commerce com XX",
   "description": "Contrato do Projeto",
+  "contract_file": "filetest.pdf",
+  "status": "PROSPECTING",
   "owner_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
   "created_at": "2026-09-11T08:00:00Z"
 }

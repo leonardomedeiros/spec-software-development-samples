@@ -27,6 +27,15 @@ class ContractModel(models.Model):
         null=True,
         help_text="Caminho do arquivo do contrato (ex: PDF).",
     )
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("PROSPECTING", "PROSPECTING"),
+            ("IN_PROGRESS", "IN_PROGRESS"),
+            ("SIGNED", "SIGNED"),
+        ],
+        default="PROSPECTING",
+    )
     owner = models.ForeignKey(UserModel, on_delete=models.RESTRICT, related_name="contracts")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -36,6 +45,7 @@ class ContractModel(models.Model):
 
 class ProjectModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    contract = models.ForeignKey(ContractModel, on_delete=models.CASCADE, related_name="projects")
     title = models.CharField(max_length=120)
     description = models.TextField(blank=True, default="")
     owner = models.ForeignKey(UserModel, on_delete=models.RESTRICT, related_name="projects")
@@ -43,6 +53,18 @@ class ProjectModel(models.Model):
 
     class Meta:
         db_table = "projects"
+
+
+class ProjectMembershipModel(models.Model):
+    project = models.ForeignKey(ProjectModel, on_delete=models.CASCADE, related_name="memberships")
+    user = models.ForeignKey(UserModel, on_delete=models.CASCADE, related_name="project_memberships")
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "project_memberships"
+        constraints = [
+            models.UniqueConstraint(fields=["project", "user"], name="unique_project_member"),
+        ]
 
 
 class TaskModel(models.Model):

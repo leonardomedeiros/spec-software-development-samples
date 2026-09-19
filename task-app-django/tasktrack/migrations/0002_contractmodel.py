@@ -19,6 +19,7 @@ class Migration(migrations.Migration):
                 ('title', models.CharField(max_length=120)),
                 ('description', models.TextField(blank=True, default='')),
                 ('contract_file', models.CharField(blank=True, help_text='Caminho do arquivo do contrato (ex: PDF).', max_length=255, null=True)),
+                ('status', models.CharField(choices=[('PROSPECTING', 'PROSPECTING'), ('IN_PROGRESS', 'IN_PROGRESS'), ('SIGNED', 'SIGNED')], default='PROSPECTING', max_length=20)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('owner', models.ForeignKey(on_delete=django.db.models.deletion.RESTRICT, related_name='contracts', to='tasktrack.usermodel')),
             ],
