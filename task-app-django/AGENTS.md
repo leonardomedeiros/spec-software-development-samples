@@ -19,6 +19,20 @@ Prompt recomendado para o OpenCode:
 
 A especificação técnica completa, esquemas SQL, contratos de API e casos de teste encontram-se em `SPECIFICATION.md`.
 
+### Procedimento obrigatório para qualquer solicitação de alteração
+
+- Identifique primeiro o arquivo, símbolo, requisito ou comportamento mencionado pelo usuário.
+- Leia os arquivos relevantes antes de planejar ou editar qualquer coisa. Quando o usuário mencionar `SPECIFICATION.md`, leia o arquivo na raiz deste projeto usando `read`.
+- Use somente as ferramentas realmente disponíveis na sessão. Para localizar arquivos e trechos, use `glob`, `grep` e `read`; para alterar arquivos, use `edit` ou `write`.
+- Nunca tente chamar uma ferramenta chamada `explore` se ela não estiver explicitamente disponível.
+- Nunca emita chamadas no formato XML, como `<function=explore>` ou `<tool_call>`; faça chamadas de ferramentas usando o mecanismo nativo da sessão.
+- Escolha o arquivo correto com base no caminho fornecido pelo usuário e no diretório atual do projeto. Não edite uma cópia em outro projeto.
+- Execute a alteração solicitada diretamente depois de obter contexto suficiente. Não pare apenas descrevendo o que deveria ser feito.
+- Preserve o escopo solicitado e não altere arquivos não relacionados sem necessidade.
+- Depois da edição, releia o trecho alterado e execute uma validação adequada, como testes, checagem, lint ou validação de sintaxe.
+- Informe ao usuário quais arquivos foram alterados e o resultado da validação.
+- Para alterações simples e localizadas, não delegue a tarefa para outro agente; faça a leitura e a edição diretamente.
+
 ---
 
 ## 2. Stack Tecnológica

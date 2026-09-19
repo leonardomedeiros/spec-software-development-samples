@@ -1,0 +1,46 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "model": "ollama/qwen3-coder:30b",
+
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama Local",
+
+      "options": {
+        "baseURL": "http://127.0.0.1:11434/v1"
+      },
+
+      "models": {
+        "qwen3-coder:30b": {
+          "name": "qwen3-coder:30b",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          },
+          "options": {
+            "num_ctx": 32768
+          }
+        },
+        "deepseek-r1:latest": {
+          "name": "deepseek-r1:latest",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          },
+          "options": {
+            "num_ctx": 32768
+          }
+        }
+      }
+    }
+  },
+
+  "permission": {
+    "edit": "allow",
+    "write": "allow",
+    "run": "allow",
+    "bash": "allow"
+  }
+}
