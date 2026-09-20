@@ -329,13 +329,24 @@
                             {% endif %}
                         </div>
                         <hr class="my-2 text-muted">
-                        <form method="POST" action="/web/tasks/{{ task.id }}/status">
-                            {% csrf_token %}
-                            <input type="hidden" name="status" value="IN_PROGRESS">
-                            <button type="submit" class="btn btn-sm btn-outline-primary w-100">
-                                Iniciar <i class="bi bi-arrow-right ms-1"></i>
+                        <div class="d-flex gap-2">
+                            <form method="POST" action="/web/tasks/{{ task.id }}/status" class="flex-grow-1">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="IN_PROGRESS">
+                                <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                                    Iniciar <i class="bi bi-arrow-right ms-1"></i>
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title }}" data-task-description="{{ task.description }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" title="Editar tarefa">
+                                <i class="bi bi-pencil"></i>
                             </button>
-                        </form>
+                            <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir tarefa" onclick="return confirm('Tem certeza que deseja excluir esta tarefa?')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             {% empty %}
@@ -370,19 +381,30 @@
                             {% endif %}
                         </div>
                         <hr class="my-2 text-muted">
-                        <div class="d-flex gap-2">
-                            <form method="POST" action="/web/tasks/{{ task.id }}/status" class="w-50">
+                        <div class="d-flex gap-2 mb-2">
+                            <form method="POST" action="/web/tasks/{{ task.id }}/status" class="flex-grow-1">
                                 {% csrf_token %}
                                 <input type="hidden" name="status" value="PENDING">
                                 <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
                                     <i class="bi bi-arrow-left me-1"></i> Voltar
                                 </button>
                             </form>
-                            <form method="POST" action="/web/tasks/{{ task.id }}/status" class="w-50">
+                            <form method="POST" action="/web/tasks/{{ task.id }}/status" class="flex-grow-1">
                                 {% csrf_token %}
                                 <input type="hidden" name="status" value="COMPLETED">
                                 <button type="submit" class="btn btn-sm btn-success w-100">
                                     Concluir <i class="bi bi-check2 ms-1"></i>
+                                </button>
+                            </form>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title }}" data-task-description="{{ task.description }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" title="Editar tarefa">
+                                <i class="bi bi-pencil me-1"></i> Editar
+                            </button>
+                            <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir tarefa" onclick="return confirm('Tem certeza que deseja excluir esta tarefa?')">
+                                    <i class="bi bi-trash me-1"></i> Excluir
                                 </button>
                             </form>
                         </div>
@@ -419,6 +441,13 @@
                                 <div><i class="bi bi-person me-1"></i>Resp: {{ task.assignee_name|default:task.assignee_id }}</div>
                             {% endif %}
                         </div>
+                        <hr class="my-2 text-muted">
+                        <form method="POST" action="/web/tasks/{{ task.id }}/delete">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir tarefa" onclick="return confirm('Tem certeza que deseja excluir esta tarefa?')">
+                                <i class="bi bi-trash me-1"></i> Excluir
+                            </button>
+                        </form>
                     </div>
                 </div>
             {% empty %}
@@ -581,6 +610,86 @@
         </form>
     </div>
 </div>
+
+<!-- MODAL: EDITAR TAREFA -->
+<div class="modal fade" id="modalEditTask" tabindex="-1" aria-labelledby="modalEditTaskLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" id="formEditTask">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalEditTaskLabel"><i class="bi bi-pencil me-2"></i>Editar Tarefa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título da Tarefa (3 a 100 caracteres) *</label>
+                        <input type="text" name="title" id="editTaskTitle" class="form-control" minlength="3" maxlength="100">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição</label>
+                        <textarea name="description" id="editTaskDescription" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Prioridade *</label>
+                            <select name="priority" id="editTaskPriority" class="form-select">
+                                <option value="LOW">LOW (Baixa)</option>
+                                <option value="MEDIUM">MEDIUM (Média)</option>
+                                <option value="HIGH">HIGH (Alta)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Responsável</label>
+                            <select name="assignee_id" id="editTaskAssignee" class="form-select">
+                                <option value="">Nenhum (Opcional)</option>
+                                {% for u in users %}
+                                    <option value="{{ u.id }}">{{ u.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Data de Vencimento (deve ser futura) *</label>
+                        <input type="datetime-local" name="due_date" id="editTaskDueDate" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Atualizar Tarefa</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const modalEditTask = document.getElementById('modalEditTask');
+    const formEditTask = document.getElementById('formEditTask');
+    const editTaskTitle = document.getElementById('editTaskTitle');
+    const editTaskDescription = document.getElementById('editTaskDescription');
+    const editTaskPriority = document.getElementById('editTaskPriority');
+    const editTaskAssignee = document.getElementById('editTaskAssignee');
+    const editTaskDueDate = document.getElementById('editTaskDueDate');
+
+    modalEditTask.addEventListener('show.bs.modal', function(e) {
+        const button = e.relatedTarget;
+        const taskId = button.getAttribute('data-task-id');
+        const taskTitle = button.getAttribute('data-task-title');
+        const taskDescription = button.getAttribute('data-task-description');
+        const taskPriority = button.getAttribute('data-task-priority');
+        const taskAssignee = button.getAttribute('data-task-assignee');
+        const taskDueDate = button.getAttribute('data-task-due-date');
+
+        editTaskTitle.value = taskTitle;
+        editTaskDescription.value = taskDescription || '';
+        editTaskPriority.value = taskPriority;
+        editTaskAssignee.value = taskAssignee || '';
+        editTaskDueDate.value = taskDueDate;
+
+        formEditTask.action = `/web/tasks/${taskId}`;
+    });
+</script>
 
 <!-- MODAL: NOVO USUÁRIO -->
 <div class="modal fade" id="modalUser" tabindex="-1" aria-labelledby="modalUserLabel" aria-hidden="true">
