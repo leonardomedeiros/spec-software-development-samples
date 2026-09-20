@@ -27,6 +27,22 @@ O **TaskTrack** é uma aplicação FullStack com Django responsável pelo gerenc
 
 ## 2. Entidades e Dados
 
+### 2.0 Formato de Texto - Markdown Support
+
+Todos os campos `TEXT` (descrições de contratos, projetos e tarefas) suportam **Markdown** para formatação de texto rico:
+- **Negrito**: `**texto**`
+- *Itálico*: `*texto*`
+- `Código`: `` `código` ``
+- Títulos: `# Título 1`, `## Título 2`, etc.
+- Listas: `- Item 1`, `- Item 2`
+- Links: `[texto](url)`
+
+Exemplos de uso:
+- Descrição de tarefa: `**Requisito**: Implementar autenticação OAuth2 com validação de PKCE`
+- Descrição de projeto: `## Fase 1\n- [x] Prototipagem\n- [ ] Testes`
+
+Os campos TEXT são armazenados como markdown puro no BD (até 65KB por campo).
+
 ### 2.1 Modelo de Dados (DDL SQL)
 
 ```sql
@@ -160,10 +176,10 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * `IN_PROGRESS` (Em Andamento): Cartões com botões *"Voltar"* (para `PENDING`) e *"Concluir"* (para `COMPLETED`), além de botões expandidos *"Editar"* e *"Excluir"*.
     * `COMPLETED` (Concluídas): Cartões com badge de conclusão, rastreamento de histórico completo, botões *"Editar"* (para reabertura ou alteração de metadata) e *"Excluir"* (para remover).
   * **Modais Interativos:**
-    * Modal de Criação do Contrato.
-    * Modal de Criação de Projeto.
-    * Modal de Cadastro de Tarefa (com seleção de prioridade, projeto, responsável e data de vencimento).
-    * Modal de Edição de Tarefa (permite atualizar título, descrição, prioridade, responsável e data de vencimento; pré-preenchido com dados da tarefa selecionada).
+    * Modal de Criação do Contrato (descrição com 5 linhas, suporta Markdown).
+    * Modal de Criação de Projeto (descrição com 5 linhas, suporta Markdown).
+    * Modal de Cadastro de Tarefa (descrição com 6 linhas, suporta Markdown, com seleção de prioridade, projeto, responsável e data de vencimento).
+    * Modal de Edição de Tarefa (permite atualizar todos os campos incluindo descrição em Markdown de 6 linhas, github_url; pré-preenchido com dados da tarefa selecionada).
     * Modal de Cadastro de Usuários (para membros da equipe).
 
 ### 3.2 Ações e Formulários Web
@@ -366,6 +382,11 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   * Histórico completo permite rastrear quem, o quê, quando e por quê cada mudança foi feita
 * **RN-05 (Atribuição de Responsável):** Se o `assignee_id` for informado, o sistema deve validar se o UUID existe na tabela `users`.
 * **RN-06 (Rastreabilidade via GitHub):** O campo `github_url` vincula tarefas a referências externas no GitHub (issues, pull requests, etc). Formato: URL relativa (ex: `https://github.com/owner/repo/issues/123`). Campo opcional, máximo 255 caracteres.
+* **RN-07 (Campos TEXT com Markdown):** Todos os campos de descrição (contratos, projetos, tarefas) aceitam formatação Markdown:
+  * Armazenamento: Markdown puro (até 65KB por campo)
+  * Suporte: **negrito**, *itálico*, `código`, títulos, listas, links
+  * Renderização: Cliente responsável por renderizar Markdown em exibição (se necessário)
+  * UI: Campos textarea aumentados (4-6 linhas) com dicas de formatação
 
 ### 5.2 Casos de Borda (CB)
 * **CB-01 (Projeto Inexistente):** Tentar criar uma tarefa enviando um `project_id` inexistente deve retornar `404 Not Found` com mensagem `"Projeto não encontrado"`.
