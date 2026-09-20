@@ -87,6 +87,7 @@ CREATE TABLE tasks (
 
 ### 2.2 Relacionamentos
 * **Contract -> Project:** 1 Contrato possui N Projetos (1:N). Ao excluir um Contrato, seus Projetos são excluídas em cascata (`CASCADE`).
+* **Contrato:** é a entidade raiz do vínculo; não possui `contract_id` nem referencia outro contrato.
 * **User -> Project:** 1 Usuário pode ser proprietário (*owner*) de N Projetos (1:N).
 * **Project -> Task:** 1 Projeto possui N Tarefas (1:N). Ao excluir um Projeto, suas Tarefas são excluídas em cascata (`CASCADE`).
 * **User -> Task:** 1 Usuário pode ser atribuído como responsável a N Tarefas (1:N).
@@ -143,7 +144,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * Modal de Cadastro de Usuários (para membros da equipe).
 
 ### 3.2 Ações e Formulários Web
-* **Adcionar Contrato:** `POST /web/contracts` (Campos: `title`, `description`, `contract_file`, `owner_id`).
+* **Adicionar Contrato:** `POST /web/contracts` (Campos: `title`, `description`, `contract_file`, `owner_id`). Um contrato não recebe `contract_id`.
 * **Criar Projeto:** `POST /web/projects` (Campos: `title`, `description`, `owner_id`).
 * **Alterar status do contrato:** `POST /web/contracts/{contract_id}/status` (Campo: `status`).
 * **Alterar status do projeto:** `POST /web/projects/{project_id}/status` (Campo: `status`). A operação sincroniza o status das tarefas do projeto conforme as regras da seção 2.3.

@@ -382,17 +382,6 @@
                         <textarea name="description" class="form-control" rows="2" placeholder="Detalhes do contrato"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Contrato *</label>
-                        <select name="contract_id" class="form-select" required>
-                            <option value="">Selecione um contrato</option>
-                            {% for c in contracts %}
-                                <option value="{{ c.id }}">{{ c.title }}</option>
-                            {% empty %}
-                                <option disabled>Nenhum contrato cadastrado</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
                         <label class="form-label fw-semibold">Proprietário (Owner) *</label>
                         <select name="owner_id" class="form-select" required>
                             {% for u in users %}
