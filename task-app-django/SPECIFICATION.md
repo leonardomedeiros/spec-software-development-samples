@@ -226,6 +226,13 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 ### 3.2 Ações e Formulários Web
 * **Adicionar Contrato:** `POST /web/contracts` (Campos: `title`, `description`, `contract_file`, `owner_id`). Um contrato não recebe `contract_id`.
 * **Criar Projeto:** `POST /web/projects` (Campos: `contract_id`, `title`, `description`, `owner_id`). O formulário deve exigir a seleção de um contrato existente; não é permitido criar projeto sem contrato.
+* **Baixar Contrato:** `GET /download/<contract_file_path>` (Autenticado).
+  * Rota: `/download/contracts/uuid_filename.pdf`
+  * Headers: `Content-Disposition: attachment` (força download em vez de abrir no navegador)
+  * Validação: Usuário deve estar autenticado
+  * Resposta: Arquivo com mimetype `application/octet-stream`
+  * Erro: 404 se arquivo não existir
+
 * **Alterar status do contrato:** `POST /web/contracts/{contract_id}/status` (Campo: `status`, com valores `PROSPECTING`, `IN_PROGRESS` ou `SIGNED`). A interface web expõe apenas as transições válidas conforme a seção 2.3; transições inválidas são rejeitadas no domínio com erro `INVALID_STATUS_TRANSITION`.
 * **Alterar status do projeto:** `POST /web/projects/{project_id}/status` (Campo: `status`). A operação sincroniza o status das tarefas do projeto conforme as regras da seção 2.3.
 * **Gerenciar equipe do projeto:** `POST /web/projects/{project_id}/team` (Campos: `action` com `add` ou `remove`, e `user_id`).

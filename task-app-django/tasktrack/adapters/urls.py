@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     contracts_view,
+    download_contract_view,
     home_view,
     login_view,
     logout_view,
@@ -24,6 +25,7 @@ urlpatterns = [
     # Web UI (MVT)
     path("login", login_view, name="login"),
     path("logout", logout_view, name="logout"),
+    path("download/<path:contract_file_path>", download_contract_view, name="download_contract"),
     path("", home_view, name="home"),
     path("web/contracts", web_create_contract_view, name="web_create_contract"),
     path("web/projects", web_create_project_view, name="web_create_project"),

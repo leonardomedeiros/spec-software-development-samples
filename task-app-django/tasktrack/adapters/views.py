@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
@@ -9,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User as DjangoUser
 from django.conf import settings
 from django.core.files.storage import default_storage
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse, HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from pydantic import ValidationError
@@ -441,6 +442,26 @@ def web_create_user_view(request):
                 messages.error(request, "Não foi possível cadastrar o usuário.")
 
     return redirect("/")
+
+
+@login_required(login_url="/login")
+def download_contract_view(request, contract_file_path: str):
+    """Download contract file with proper headers for browser."""
+    if not contract_file_path:
+        return HttpResponse("Arquivo não encontrado", status=404)
+
+    try:
+        file_content = default_storage.open(contract_file_path, 'rb')
+        filename = os.path.basename(contract_file_path)
+
+        response = FileResponse(file_content, content_type='application/octet-stream')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Length'] = default_storage.size(contract_file_path)
+
+        return response
+    except Exception as e:
+        messages.error(request, f"Erro ao baixar arquivo: {str(e)}")
+        return redirect("/")
 
 
 def login_view(request):

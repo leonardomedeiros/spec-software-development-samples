@@ -118,7 +118,7 @@
                                     {% endif %}
                                     <p class="small text-muted mb-2"><i class="bi bi-person me-1"></i>{{ c.owner_name|default:c.owner_id }}</p>
                                     {% if c.contract_file %}
-                                        <a href="{{ MEDIA_URL }}{{ c.contract_file }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-2">
+                                        <a href="{% url 'download_contract' c.contract_file %}" class="btn btn-sm btn-outline-secondary mb-2">
                                             <i class="bi bi-download me-1"></i>Baixar
                                         </a>
                                     {% endif %}
@@ -153,7 +153,7 @@
                                     {% endif %}
                                     <p class="small text-muted mb-2"><i class="bi bi-person me-1"></i>{{ c.owner_name|default:c.owner_id }}</p>
                                     {% if c.contract_file %}
-                                        <a href="{{ MEDIA_URL }}{{ c.contract_file }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-2">
+                                        <a href="{% url 'download_contract' c.contract_file %}" class="btn btn-sm btn-outline-secondary mb-2">
                                             <i class="bi bi-download me-1"></i>Baixar
                                         </a>
                                     {% endif %}
@@ -197,7 +197,7 @@
                                     {% endif %}
                                     <p class="small text-muted mb-2"><i class="bi bi-person me-1"></i>{{ c.owner_name|default:c.owner_id }}</p>
                                     {% if c.contract_file %}
-                                        <a href="{{ MEDIA_URL }}{{ c.contract_file }}" target="_blank" class="btn btn-sm btn-outline-secondary mb-2">
+                                        <a href="{% url 'download_contract' c.contract_file %}" class="btn btn-sm btn-outline-secondary mb-2">
                                             <i class="bi bi-download me-1"></i>Baixar
                                         </a>
                                     {% endif %}
