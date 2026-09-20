@@ -337,7 +337,7 @@
                                     Iniciar <i class="bi bi-arrow-right ms-1"></i>
                                 </button>
                             </form>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" title="Editar tarefa">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="d-inline">
@@ -398,7 +398,7 @@
                             </form>
                         </div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" title="Editar tarefa">
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
                                 <i class="bi bi-pencil me-1"></i> Editar
                             </button>
                             <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1">
@@ -436,20 +436,20 @@
                             <p class="card-text text-muted small mb-2">{{ task.description }}</p>
                         {% endif %}
                         <div class="small text-muted mb-2">
-                            <div><i class="bi bi-check2-all me-1"></i>Concluída (RN-04: Não editável)</div>
+                            <div><i class="bi bi-check2-all me-1"></i>Concluída (com histórico de alterações)</div>
                             {% if task.assignee_id %}
                                 <div><i class="bi bi-person me-1"></i>Resp: {{ task.assignee_name|default:task.assignee_id }}</div>
                             {% endif %}
                         </div>
                         <hr class="my-2 text-muted">
                         <div class="d-flex gap-2">
-                            <div class="alert alert-info small mb-0 flex-grow-1" role="alert">
-                                <i class="bi bi-info-circle me-1"></i>Tarefa concluída - não pode ser editada
-                            </div>
-                            <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="d-inline">
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
+                                <i class="bi bi-pencil me-1"></i> Editar
+                            </button>
+                            <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir tarefa" onclick="return confirm('Tem certeza que deseja excluir esta tarefa?')">
-                                    <i class="bi bi-trash"></i>
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir tarefa" onclick="return confirm('Tem certeza que deseja excluir esta tarefa?')">
+                                    <i class="bi bi-trash me-1"></i> Excluir
                                 </button>
                             </form>
                         </div>
@@ -660,6 +660,11 @@
                         <label class="form-label fw-semibold">Data de Vencimento (deve ser futura)</label>
                         <input type="datetime-local" name="due_date" id="editTaskDueDate" class="form-control">
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">URL do GitHub (Issue, PR, etc)</label>
+                        <input type="url" name="github_url" id="editTaskGithubUrl" class="form-control" placeholder="https://github.com/..." maxlength="255">
+                        <div class="form-text">Link relativo a esta tarefa no GitHub (opcional)</div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -686,6 +691,7 @@
                 const taskPrio = button.getAttribute('data-task-priority') || '';
                 const taskAssignee = button.getAttribute('data-task-assignee') || '';
                 const taskDueDate = button.getAttribute('data-task-due-date') || '';
+                const taskGithubUrl = button.getAttribute('data-task-github-url') || '';
 
                 document.getElementById('currentTaskId').value = taskId;
                 document.getElementById('editTaskTitle').value = taskTitle;
@@ -693,6 +699,7 @@
                 document.getElementById('editTaskPriority').value = taskPrio;
                 document.getElementById('editTaskAssignee').value = taskAssignee;
                 document.getElementById('editTaskDueDate').value = taskDueDate;
+                document.getElementById('editTaskGithubUrl').value = taskGithubUrl;
 
                 formEl.action = `/web/tasks/${taskId}`;
                 console.log('Modal opened for task:', taskId, 'Form action:', formEl.action);

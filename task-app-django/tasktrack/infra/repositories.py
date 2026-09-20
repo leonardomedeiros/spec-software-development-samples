@@ -164,6 +164,7 @@ class DjangoTaskRepository(ITaskRepository):
                 priority=TaskPriority(orm_task.priority),
                 assignee_id=orm_task.assignee_id,
                 due_date=orm_task.due_date,
+                github_url=orm_task.github_url,
                 created_at=orm_task.created_at,
                 updated_at=orm_task.updated_at,
             )
@@ -181,6 +182,7 @@ class DjangoTaskRepository(ITaskRepository):
                 priority=TaskPriority(t.priority),
                 assignee_id=t.assignee_id,
                 due_date=t.due_date,
+                github_url=t.github_url,
                 created_at=t.created_at,
                 updated_at=t.updated_at,
             )
@@ -198,6 +200,7 @@ class DjangoTaskRepository(ITaskRepository):
                 priority=TaskPriority(t.priority),
                 assignee_id=t.assignee_id,
                 due_date=t.due_date,
+                github_url=t.github_url,
                 created_at=t.created_at,
                 updated_at=t.updated_at,
             )
@@ -215,6 +218,7 @@ class DjangoTaskRepository(ITaskRepository):
                 "priority": task.priority.value,
                 "assignee_id": task.assignee_id,
                 "due_date": task.due_date,
+                "github_url": task.github_url,
             },
         )
         task.created_at = orm_task.created_at

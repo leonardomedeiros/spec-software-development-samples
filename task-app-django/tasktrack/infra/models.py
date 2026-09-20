@@ -105,8 +105,28 @@ class TaskModel(models.Model):
         related_name="assigned_tasks",
     )
     due_date = models.DateTimeField()
+    github_url = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="URL relativa a esta tarefa no GitHub (issue, PR, etc)",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "tasks"
+
+
+class TaskHistoryModel(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey(TaskModel, on_delete=models.CASCADE, related_name="history")
+    changed_by = models.ForeignKey(UserModel, on_delete=models.RESTRICT, related_name="task_changes")
+    field_name = models.CharField(max_length=50)
+    old_value = models.TextField(blank=True, null=True)
+    new_value = models.TextField(blank=True, null=True)
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "task_history"
+        ordering = ["-changed_at"]

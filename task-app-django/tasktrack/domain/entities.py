@@ -59,29 +59,33 @@ class Task:
     priority: TaskPriority = TaskPriority.MEDIUM
     assignee_id: Optional[UUID] = None
     due_date: Optional[datetime] = None
+    github_url: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     def change_status(self, new_status: TaskStatus) -> None:
         """
         RN-04 (Ciclo de Vida do Status):
-        - Transições permitidas:
+        - Transições permitidas (todas as combinações):
             PENDING -> IN_PROGRESS
+            PENDING -> COMPLETED
             IN_PROGRESS -> COMPLETED
             IN_PROGRESS -> PENDING
-        - Transição proibida:
-            COMPLETED -> PENDING ou IN_PROGRESS
+            COMPLETED -> PENDING
+            COMPLETED -> IN_PROGRESS
+        - Todas as transições são permitidas com rastreamento de histórico
         """
-        if self.status == TaskStatus.COMPLETED:
-            raise InvalidStatusTransitionError("Tarefas concluídas não podem ter seu status alterado.")
+        if new_status != self.status:
+            self.status = new_status
+            self.updated_at = datetime.now()
 
-        allowed_transitions = {
-            TaskStatus.PENDING: [TaskStatus.IN_PROGRESS],
-            TaskStatus.IN_PROGRESS: [TaskStatus.COMPLETED, TaskStatus.PENDING],
-        }
 
-        if new_status != self.status and new_status not in allowed_transitions.get(self.status, []):
-            raise InvalidStatusTransitionError(f"Transição inválida de {self.status.value} para {new_status.value}.")
-
-        self.status = new_status
-        self.updated_at = datetime.now()
+@dataclass
+class TaskHistory:
+    id: UUID = field(default_factory=uuid4)
+    task_id: UUID = field(default_factory=uuid4)
+    changed_by_id: UUID = field(default_factory=uuid4)
+    field_name: str = ""
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+    changed_at: Optional[datetime] = None

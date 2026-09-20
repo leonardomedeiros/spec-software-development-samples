@@ -343,17 +343,13 @@ def web_update_task_view(request, task_id: str):
                 messages.error(request, "Tarefa não encontrada.")
                 return redirect("/")
 
-            # RN-04: Tarefas concluídas não podem ser editadas
-            if task.status == TaskStatus.COMPLETED:
-                messages.error(request, "Tarefas concluídas não podem ser editadas.")
-                return redirect("/")
-
             # Extract form data
             title = request.POST.get("title", "").strip()
             description = request.POST.get("description", "").strip()
             priority_str = request.POST.get("priority", "").strip()
             assignee_id_str = request.POST.get("assignee_id", "").strip()
             due_date_str = request.POST.get("due_date", "").strip()
+            github_url = request.POST.get("github_url", "").strip()
 
             # Parse due_date
             due_date = None
@@ -369,6 +365,7 @@ def web_update_task_view(request, task_id: str):
                 priority=TaskPriority(priority_str) if priority_str else None,
                 assignee_id=UUID(assignee_id_str) if assignee_id_str else None,
                 due_date=due_date,
+                github_url=github_url if github_url else None,
             )
 
             # Execute use case

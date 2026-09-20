@@ -80,8 +80,20 @@ CREATE TABLE tasks (
     priority VARCHAR(10) NOT NULL DEFAULT 'MEDIUM', -- 'LOW', 'MEDIUM', 'HIGH'
     assignee_id UUID REFERENCES users(id) ON DELETE SET NULL,
     due_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    github_url VARCHAR(255), -- URL relativa a esta tarefa no GitHub (issue, PR, etc)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de Histórico de Auditoria de Tarefas
+CREATE TABLE task_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    changed_by_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    field_name VARCHAR(50) NOT NULL, -- 'title', 'description', 'status', 'priority', 'assignee_id', 'due_date', 'github_url'
+    old_value TEXT, -- Valor anterior do campo
+    new_value TEXT, -- Novo valor do campo
+    changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -146,7 +158,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   * **Quadro Kanban de Tarefas:** Dividido em 3 colunas de status:
     * `PENDING` (Pendentes): Cartões com badge de prioridade, prazo, botão *"Iniciar"* para transição direta para `IN_PROGRESS`, botão *"Editar"* (lápis) e botão *"Excluir"* (lixeira).
     * `IN_PROGRESS` (Em Andamento): Cartões com botões *"Voltar"* (para `PENDING`) e *"Concluir"* (para `COMPLETED`), além de botões expandidos *"Editar"* e *"Excluir"*.
-    * `COMPLETED` (Concluídas): Cartões arquivados, aplicando a **RN-04** (bloqueio de reabertura), com botão *"Excluir"* para remover tarefas concluídas.
+    * `COMPLETED` (Concluídas): Cartões com badge de conclusão, rastreamento de histórico completo, botões *"Editar"* (para reabertura ou alteração de metadata) e *"Excluir"* (para remover).
   * **Modais Interativos:**
     * Modal de Criação do Contrato.
     * Modal de Criação de Projeto.
@@ -162,18 +174,18 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Gerenciar equipe do projeto:** `POST /web/projects/{project_id}/team` (Campos: `action` com `add` ou `remove`, e `user_id`).
 * **Cadastrar Tarefa:** `POST /web/tasks` (Campos: `project_id`, `title`, `description`, `priority`, `assignee_id`, `due_date`). Modal pré-seleciona o projeto se filtrado.
 * **Alterar Status:** `POST /web/tasks/{task_id}/status` (Campo: `status`). Disponível via botão *"Iniciar"*, *"Voltar"* ou *"Concluir"* nos cartões.
-* **Editar Tarefa:** `POST /web/tasks/{task_id}` (Campos opcionais: `title`, `description`, `priority`, `assignee_id`, `due_date`). 
+* **Editar Tarefa:** `POST /web/tasks/{task_id}` (Campos opcionais: `title`, `description`, `priority`, `assignee_id`, `due_date`, `github_url`). 
   * Modal pré-preenchido com dados da tarefa através de `data-*` attributes
   * Suporta atualização parcial: apenas campos alterados são enviados
   * Campos vazios são convertidos para `None` (não atualizam o BD)
-  * **Botão (lápis) disponível APENAS em tarefas PENDING e IN_PROGRESS**
-  * **Tarefas COMPLETED não podem ser editadas** (RN-04): retorna erro `"Tarefas concluídas não podem ser editadas."`
-  * Validação no cliente: título 3-100 caracteres, data deve ser futura
-  * Validação no servidor: valida assignee_id, verificação de status COMPLETED, transições de status
+  * **Botão (lápis) disponível em TODAS as tarefas** (PENDING, IN_PROGRESS, COMPLETED)
+  * **Permite reabertura**: Tarefas COMPLETED podem voltar para PENDING ou IN_PROGRESS
+  * **Rastreamento de auditoria**: Cada alteração registrada em `task_history` com usuário, campo, valor anterior/novo, data/hora
+  * Validação no cliente: título 3-100 caracteres, data deve ser futura, URL do GitHub (opcional)
+  * Validação no servidor: valida assignee_id, formato github_url, transições de status
   * Mensagens de sucesso/erro via Django messages
 * **Excluir Tarefa:** `POST /web/tasks/{task_id}/delete` (Sem campos). 
   * Botão (lixeira) disponível em **todas** as tarefas (PENDING, IN_PROGRESS, COMPLETED)
-  * **Tarefas COMPLETED exibem aviso:** *"Tarefa concluída - não pode ser editada"*
   * Exibe confirmação JavaScript: *"Tem certeza que deseja excluir esta tarefa?"*
   * Exclusão permanente e irreversível
   * Responde com redirecionamento para `/` e mensagem de sucesso
@@ -336,12 +348,24 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **RN-03 (Valores Permitidos de Enums):**
   * `status`: Apenas `PENDING`, `IN_PROGRESS`, `COMPLETED`.
   * `priority`: Apenas `LOW`, `MEDIUM`, `HIGH`.
-* **RN-04 (Ciclo de Vida do Status - Imutabilidade de Tarefas Concluídas):**
-  * Transições permitidas: `PENDING` ➔ `IN_PROGRESS`, `IN_PROGRESS` ➔ `COMPLETED`, `IN_PROGRESS` ➔ `PENDING`.
-  * Transição proibida: Uma tarefa no status `COMPLETED` não pode retornar para `PENDING` ou `IN_PROGRESS`.
-  * **Edição proibida**: Tarefas no status `COMPLETED` não podem ter seus campos editados (título, descrição, prioridade, responsável, data de vencimento).
-  * **Operação permitida**: Apenas exclusão de tarefas `COMPLETED` é permitida (deleção permanente).
+* **RN-04 (Ciclo de Vida do Status - Com Auditoria):**
+  * Transições permitidas (todas as combinações com rastreamento):
+    - `PENDING` ➔ `IN_PROGRESS`
+    - `PENDING` ➔ `COMPLETED`
+    - `IN_PROGRESS` ➔ `COMPLETED`
+    - `IN_PROGRESS` ➔ `PENDING`
+    - `COMPLETED` ➔ `PENDING` (reabertura)
+    - `COMPLETED` ➔ `IN_PROGRESS` (reabertura)
+  * **Rastreamento de Auditoria**: Toda alteração (status, título, descrição, prioridade, responsável, data, github_url) é registrada na tabela `task_history` com:
+    - `task_id`: UUID da tarefa alterada
+    - `changed_by_id`: UUID do usuário que realizou a alteração
+    - `field_name`: Nome do campo alterado
+    - `old_value`: Valor anterior
+    - `new_value`: Novo valor
+    - `changed_at`: Data/hora da alteração (UTC)
+  * Histórico completo permite rastrear quem, o quê, quando e por quê cada mudança foi feita
 * **RN-05 (Atribuição de Responsável):** Se o `assignee_id` for informado, o sistema deve validar se o UUID existe na tabela `users`.
+* **RN-06 (Rastreabilidade via GitHub):** O campo `github_url` vincula tarefas a referências externas no GitHub (issues, pull requests, etc). Formato: URL relativa (ex: `https://github.com/owner/repo/issues/123`). Campo opcional, máximo 255 caracteres.
 
 ### 5.2 Casos de Borda (CB)
 * **CB-01 (Projeto Inexistente):** Tentar criar uma tarefa enviando um `project_id` inexistente deve retornar `404 Not Found` com mensagem `"Projeto não encontrado"`.

@@ -210,6 +210,8 @@ class UpdateTaskUseCase:
             task.assignee_id = dto.assignee_id
         if dto.due_date is not None:
             task.due_date = dto.due_date
+        if dto.github_url is not None:
+            task.github_url = dto.github_url
 
         task.updated_at = datetime.now(timezone.utc)
         return self.task_repo.save(task)

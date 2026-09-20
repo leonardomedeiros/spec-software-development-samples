@@ -102,6 +102,7 @@ class UpdateTaskSchema(BaseModel):
     priority: Optional[TaskPriority] = None
     assignee_id: Optional[UUID] = None
     due_date: Optional[datetime] = None
+    github_url: Optional[str] = Field(None, max_length=255)
 
     @field_validator("title")
     @classmethod
@@ -127,6 +128,15 @@ class UpdateTaskSchema(BaseModel):
         if v_cmp <= now:
             raise ValueError("A data de vencimento não pode ser no passado.")
         return v
+
+    @field_validator("github_url")
+    @classmethod
+    def validate_github_url(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not v.strip():
+            return None
+        return v.strip()
 
 
 class TaskResponseSchema(BaseModel):
