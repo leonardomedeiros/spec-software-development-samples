@@ -332,12 +332,12 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   "description": "Integrar API da Zoop para checkout transparente.",
   "priority": "HIGH",
   "assignee_id": null,
-  "due_date": null
+  "due_date": null  <!-- null ou formato: "YYYY-MM-DD" -->
 }
 ```
 * **Campos Opcionais:**
   * `assignee_id`: UUID do usuário responsável (null = sem responsável)
-  * `due_date`: Data de vencimento em formato ISO 8601 (null = sem data definida)
+  * `due_date`: Data de vencimento em formato `YYYY-MM-DD` (null = sem data definida). Exemplo: `"2026-12-31"`
   * Se fornecidos, devem ser: assignee_id válido no BD, due_date no futuro
 
 * **Respostas:**
@@ -389,7 +389,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   "description": "Nova descrição.",
   "priority": "HIGH",
   "assignee_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-  "due_date": "2026-11-30T23:59:59Z"
+  "due_date": "2026-11-30"
 }
 ```
 * **Respostas:**
@@ -413,7 +413,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ### 5.1 Regras de Negócio (RN)
 * **RN-01 (Validação de Título):** O título da tarefa deve conter entre 3 e 100 caracteres e não pode ser composto apenas por espaços em branco.
-* **RN-02 (Data de Vencimento Futura - Opcional):** A `due_date` é opcional na criação. Quando fornecida, deve obrigatoriamente ser posterior ao momento da requisição (`due_date > agora`). Pode ser atribuída posteriormente através da edição.
+* **RN-02 (Data de Vencimento Futura - Opcional):** A `due_date` é opcional na criação. Quando fornecida, deve obrigatoriamente ser posterior ao dia atual (só é aceito data futura, não o próprio dia). Pode ser atribuída posteriormente através da edição. Formato: `YYYY-MM-DD`.
 * **RN-03 (Valores Permitidos de Enums):**
   * `status`: Apenas `PENDING`, `IN_PROGRESS`, `COMPLETED`.
   * `priority`: Apenas `LOW`, `MEDIUM`, `HIGH`.
@@ -444,7 +444,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ### 5.2 Casos de Borda (CB)
 * **CB-01 (Projeto Inexistente):** Tentar criar uma tarefa enviando um `project_id` inexistente deve retornar `404 Not Found` com mensagem `"Projeto não encontrado"`.
-* **CB-02 (Data no Passado):** Enviar `due_date = "2020-01-01T00:00:00Z"` deve ser interceptado pelo Pydantic e retornar `422 Unprocessable Entity` com mensagem `"A data de vencimento não pode ser no passado."`.
+* **CB-02 (Data no Passado):** Enviar `due_date = "2020-01-01"` deve ser interceptado pelo Pydantic e retornar `422 Unprocessable Entity` com mensagem `"A data de vencimento não pode ser no passado."`.
 * **CB-03 (Reabertura Inválida):** Tentar alterar o status de `COMPLETED` para `IN_PROGRESS` deve retornar `400 Bad Request` com código de erro de domínio `"INVALID_STATUS_TRANSITION"`.
 * **CB-04 (Usuário Inexistente):** Informar um `assignee_id` não cadastrado deve retornar `404 Not Found` com a mensagem `"Usuário atribuído não existe"`.
 * **CB-05 (Edição Parcial):** Ao editar uma tarefa, enviar apenas `title` e `due_date` deve atualizar apenas esses campos, mantendo os demais inalterados.
@@ -480,7 +480,7 @@ Estes cenários devem orientar a geração de testes automatizados com `pytest` 
     "title": "Criar Testes de Integração",
     "description": "Cobrir casos felizes e de erro.",
     "priority": "HIGH",
-    "due_date": "2026-12-31T23:59:59Z"
+    "due_date": "2026-12-31"
   }
   ```
 * **Então** o código de status HTTP retornado deve ser `201 Created`
@@ -489,7 +489,7 @@ Estes cenários devem orientar a geração de testes automatizados com `pytest` 
 
 ### Cenário 3: Falha por Data Retroativa
 * **Dado** que a data atual é `2026-09-12`
-* **Quando** for enviada uma requisição `POST` com `due_date = "2025-01-01T00:00:00Z"`
+* **Quando** for enviada uma requisição `POST` com `due_date = "2025-01-01"`
 * **Então** o código de status HTTP retornado deve ser `422 Unprocessable Entity`
 * **E** o corpo da resposta deve detalhar o erro:
   ```json

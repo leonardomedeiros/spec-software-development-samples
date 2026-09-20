@@ -280,11 +280,10 @@ def web_create_task_view(request):
         due_date_str = request.POST.get("due_date", "")
 
         try:
+            from datetime import date
             due_date = None
             if due_date_str:
-                due_date = datetime.fromisoformat(due_date_str)
-                if due_date.tzinfo is None:
-                    due_date = due_date.replace(tzinfo=timezone.utc)
+                due_date = date.fromisoformat(due_date_str)
 
             dto = CreateTaskSchema(
                 title=title,
@@ -355,11 +354,10 @@ def web_update_task_view(request, task_id: str):
             github_url = request.POST.get("github_url", "").strip()
 
             # Parse due_date
+            from datetime import date
             due_date = None
             if due_date_str:
-                due_date = datetime.fromisoformat(due_date_str)
-                if due_date.tzinfo is None:
-                    due_date = due_date.replace(tzinfo=timezone.utc)
+                due_date = date.fromisoformat(due_date_str)
 
             # Build DTO with None for empty fields (partial update)
             dto = UpdateTaskSchema(

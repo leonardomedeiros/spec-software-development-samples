@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
@@ -66,7 +66,7 @@ class CreateTaskSchema(BaseModel):
     description: Optional[str] = None
     priority: TaskPriority = TaskPriority.MEDIUM
     assignee_id: Optional[UUID] = None
-    due_date: Optional[datetime] = None
+    due_date: Optional[date] = None
 
     @field_validator("title")
     @classmethod
@@ -79,18 +79,14 @@ class CreateTaskSchema(BaseModel):
 
     @field_validator("due_date")
     @classmethod
-    def validate_due_date_future(cls, v: Optional[datetime]) -> Optional[datetime]:
+    def validate_due_date_future(cls, v: Optional[date]) -> Optional[date]:
         # RN-02 / CB-02: data no futuro (opcional)
         if v is None:
             return v
 
-        now = datetime.now(timezone.utc)
-        if v.tzinfo is None:
-            v_cmp = v.replace(tzinfo=timezone.utc)
-        else:
-            v_cmp = v
-
-        if v_cmp <= now:
+        from datetime import date as date_class
+        today = date_class.today()
+        if v <= today:
             raise ValueError("A data de vencimento não pode ser no passado.")
         return v
 
@@ -104,7 +100,7 @@ class UpdateTaskSchema(BaseModel):
     description: Optional[str] = None
     priority: Optional[TaskPriority] = None
     assignee_id: Optional[UUID] = None
-    due_date: Optional[datetime] = None
+    due_date: Optional[date] = None
     github_url: Optional[str] = Field(None, max_length=255)
 
     @field_validator("title")
@@ -119,16 +115,12 @@ class UpdateTaskSchema(BaseModel):
 
     @field_validator("due_date")
     @classmethod
-    def validate_due_date_future(cls, v: Optional[datetime]) -> Optional[datetime]:
+    def validate_due_date_future(cls, v: Optional[date]) -> Optional[date]:
         if v is None:
             return v
-        now = datetime.now(timezone.utc)
-        if v.tzinfo is None:
-            v_cmp = v.replace(tzinfo=timezone.utc)
-        else:
-            v_cmp = v
-
-        if v_cmp <= now:
+        from datetime import date as date_class
+        today = date_class.today()
+        if v <= today:
             raise ValueError("A data de vencimento não pode ser no passado.")
         return v
 
