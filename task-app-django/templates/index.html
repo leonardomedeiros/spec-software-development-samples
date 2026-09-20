@@ -337,7 +337,7 @@
                                     Iniciar <i class="bi bi-arrow-right ms-1"></i>
                                 </button>
                             </form>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title }}" data-task-description="{{ task.description }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" title="Editar tarefa">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" title="Editar tarefa">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="d-inline">
@@ -398,7 +398,7 @@
                             </form>
                         </div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title }}" data-task-description="{{ task.description }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" title="Editar tarefa">
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" title="Editar tarefa">
                                 <i class="bi bi-pencil me-1"></i> Editar
                             </button>
                             <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1">
@@ -664,30 +664,36 @@
 </div>
 
 <script>
-    const modalEditTask = document.getElementById('modalEditTask');
-    const formEditTask = document.getElementById('formEditTask');
-    const editTaskTitle = document.getElementById('editTaskTitle');
-    const editTaskDescription = document.getElementById('editTaskDescription');
-    const editTaskPriority = document.getElementById('editTaskPriority');
-    const editTaskAssignee = document.getElementById('editTaskAssignee');
-    const editTaskDueDate = document.getElementById('editTaskDueDate');
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalEditTask = document.getElementById('modalEditTask');
+        const formEditTask = document.getElementById('formEditTask');
+        const editTaskTitle = document.getElementById('editTaskTitle');
+        const editTaskDescription = document.getElementById('editTaskDescription');
+        const editTaskPriority = document.getElementById('editTaskPriority');
+        const editTaskAssignee = document.getElementById('editTaskAssignee');
+        const editTaskDueDate = document.getElementById('editTaskDueDate');
 
-    modalEditTask.addEventListener('show.bs.modal', function(e) {
-        const button = e.relatedTarget;
-        const taskId = button.getAttribute('data-task-id');
-        const taskTitle = button.getAttribute('data-task-title');
-        const taskDescription = button.getAttribute('data-task-description');
-        const taskPriority = button.getAttribute('data-task-priority');
-        const taskAssignee = button.getAttribute('data-task-assignee');
-        const taskDueDate = button.getAttribute('data-task-due-date');
+        if (modalEditTask) {
+            modalEditTask.addEventListener('show.bs.modal', function(e) {
+                const button = e.relatedTarget;
+                if (!button) return;
 
-        editTaskTitle.value = taskTitle;
-        editTaskDescription.value = taskDescription || '';
-        editTaskPriority.value = taskPriority;
-        editTaskAssignee.value = taskAssignee || '';
-        editTaskDueDate.value = taskDueDate;
+                const taskId = button.getAttribute('data-task-id');
+                const taskTitle = button.getAttribute('data-task-title') || '';
+                const taskDescription = button.getAttribute('data-task-description') || '';
+                const taskPriority = button.getAttribute('data-task-priority') || 'MEDIUM';
+                const taskAssignee = button.getAttribute('data-task-assignee') || '';
+                const taskDueDate = button.getAttribute('data-task-due-date') || '';
 
-        formEditTask.action = `/web/tasks/${taskId}`;
+                editTaskTitle.value = taskTitle;
+                editTaskDescription.value = taskDescription;
+                editTaskPriority.value = taskPriority;
+                editTaskAssignee.value = taskAssignee;
+                editTaskDueDate.value = taskDueDate;
+
+                formEditTask.action = `/web/tasks/${taskId}`;
+            });
+        }
     });
 </script>
 

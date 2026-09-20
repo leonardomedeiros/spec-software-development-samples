@@ -162,8 +162,19 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Gerenciar equipe do projeto:** `POST /web/projects/{project_id}/team` (Campos: `action` com `add` ou `remove`, e `user_id`).
 * **Cadastrar Tarefa:** `POST /web/tasks` (Campos: `project_id`, `title`, `description`, `priority`, `assignee_id`, `due_date`). Modal pré-seleciona o projeto se filtrado.
 * **Alterar Status:** `POST /web/tasks/{task_id}/status` (Campo: `status`). Disponível via botão *"Iniciar"*, *"Voltar"* ou *"Concluir"* nos cartões.
-* **Editar Tarefa:** `POST /web/tasks/{task_id}` (Campos opcionais: `title`, `description`, `priority`, `assignee_id`, `due_date`). Modal pré-preenchido com dados da tarefa, suporta atualização parcial. Botão (lápis) em tarefas PENDING e IN_PROGRESS. Confirmação dialoga antes de enviar.
-* **Excluir Tarefa:** `POST /web/tasks/{task_id}/delete` (Sem campos). Botão (lixeira) disponível em todas as tarefas. Exibe confirmação: *"Tem certeza que deseja excluir esta tarefa?"*.
+* **Editar Tarefa:** `POST /web/tasks/{task_id}` (Campos opcionais: `title`, `description`, `priority`, `assignee_id`, `due_date`). 
+  * Modal pré-preenchido com dados da tarefa através de `data-*` attributes
+  * Suporta atualização parcial: apenas campos alterados são enviados
+  * Campos vazios são convertidos para `None` (não atualizam o BD)
+  * Botão (lápis) disponível em tarefas PENDING e IN_PROGRESS
+  * Validação no cliente: título 3-100 caracteres, data deve ser futura
+  * Validação no servidor: valida assignee_id e transições de status
+  * Mensagens de sucesso/erro via Django messages
+* **Excluir Tarefa:** `POST /web/tasks/{task_id}/delete` (Sem campos). 
+  * Botão (lixeira) disponível em **todas** as tarefas (PENDING, IN_PROGRESS, COMPLETED)
+  * Exibe confirmação JavaScript: *"Tem certeza que deseja excluir esta tarefa?"*
+  * Exclusão permanente e irreversível
+  * Responde com redirecionamento para `/` e mensagem de sucesso
 * **Cadastrar Usuário:** `POST /web/users` (Campos: `name`, `email`, `password`, `password_confirmation`, `role`).
 * **Entrar:** `POST /login` (Campos: `username` com o e-mail e `password`).
 * **Sair:** `GET /logout`.

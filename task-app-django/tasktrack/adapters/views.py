@@ -330,13 +330,13 @@ def web_update_task_status_view(request, task_id: str):
 @login_required(login_url="/login")
 def web_update_task_view(request, task_id: str):
     if request.method == "POST":
-        title = request.POST.get("title", "").strip() or None
-        description = request.POST.get("description", "").strip() or None
-        priority = request.POST.get("priority") or None
-        assignee_id_str = request.POST.get("assignee_id", "").strip()
-        due_date_str = request.POST.get("due_date", "").strip()
-
         try:
+            title = request.POST.get("title", "").strip()
+            description = request.POST.get("description", "").strip()
+            priority_str = request.POST.get("priority", "").strip()
+            assignee_id_str = request.POST.get("assignee_id", "").strip()
+            due_date_str = request.POST.get("due_date", "").strip()
+
             due_date = None
             if due_date_str:
                 due_date = datetime.fromisoformat(due_date_str)
@@ -344,9 +344,9 @@ def web_update_task_view(request, task_id: str):
                     due_date = due_date.replace(tzinfo=timezone.utc)
 
             dto = UpdateTaskSchema(
-                title=title,
-                description=description,
-                priority=TaskPriority(priority) if priority else None,
+                title=title if title else None,
+                description=description if description else None,
+                priority=TaskPriority(priority_str) if priority_str else None,
                 assignee_id=UUID(assignee_id_str) if assignee_id_str else None,
                 due_date=due_date,
             )
@@ -356,10 +356,14 @@ def web_update_task_view(request, task_id: str):
         except ValidationError as e:
             msg = e.errors()[0].get("msg", "Dados da tarefa inválidos.")
             messages.error(request, f"Erro ao atualizar tarefa: {msg}")
+        except ValueError as e:
+            messages.error(request, f"Dados inválidos: {str(e)}")
+        except TaskNotFoundError as e:
+            messages.error(request, f"Tarefa não encontrada: {e.message}")
         except DomainError as e:
             messages.error(request, f"Erro de domínio: {e}")
         except Exception as e:
-            messages.error(request, f"Erro ao processar dados da tarefa: {e}")
+            messages.error(request, f"Erro ao processar dados da tarefa: {str(e)}")
 
     return redirect("/")
 
