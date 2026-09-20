@@ -66,7 +66,7 @@ class CreateTaskSchema(BaseModel):
     description: Optional[str] = None
     priority: TaskPriority = TaskPriority.MEDIUM
     assignee_id: Optional[UUID] = None
-    due_date: datetime
+    due_date: Optional[datetime] = None
 
     @field_validator("title")
     @classmethod
@@ -79,8 +79,11 @@ class CreateTaskSchema(BaseModel):
 
     @field_validator("due_date")
     @classmethod
-    def validate_due_date_future(cls, v: datetime) -> datetime:
-        # RN-02 / CB-02: data no futuro
+    def validate_due_date_future(cls, v: Optional[datetime]) -> Optional[datetime]:
+        # RN-02 / CB-02: data no futuro (opcional)
+        if v is None:
+            return v
+
         now = datetime.now(timezone.utc)
         if v.tzinfo is None:
             v_cmp = v.replace(tzinfo=timezone.utc)

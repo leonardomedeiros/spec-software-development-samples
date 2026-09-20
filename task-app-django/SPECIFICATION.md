@@ -323,7 +323,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ### 4.3 Criar Tarefa
 * **Endpoint:** `POST /api/v1/projects/{project_id}/tasks`
-* **Descrição:** Cadastra uma nova tarefa vinculada a um projeto existente.
+* **Descrição:** Cadastra uma nova tarefa vinculada a um projeto existente. Responsável e data de vencimento são opcionais e podem ser atribuídos posteriormente.
 * **Path Parameter:** `project_id` (UUID)
 * **Request Body:**
 ```json
@@ -331,10 +331,15 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   "title": "Implementar Gateway de Pagamento",
   "description": "Integrar API da Zoop para checkout transparente.",
   "priority": "HIGH",
-  "assignee_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-  "due_date": "2026-10-15T23:59:59Z"
+  "assignee_id": null,
+  "due_date": null
 }
 ```
+* **Campos Opcionais:**
+  * `assignee_id`: UUID do usuário responsável (null = sem responsável)
+  * `due_date`: Data de vencimento em formato ISO 8601 (null = sem data definida)
+  * Se fornecidos, devem ser: assignee_id válido no BD, due_date no futuro
+
 * **Respostas:**
   * `201 Created`:
 ```json
@@ -345,14 +350,14 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   "description": "Integrar API da Zoop para checkout transparente.",
   "status": "PENDING",
   "priority": "HIGH",
-  "assignee_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-  "due_date": "2026-10-15T23:59:59Z",
+  "assignee_id": null,
+  "due_date": null,
   "created_at": "2026-09-12T08:30:00Z",
   "updated_at": "2026-09-12T08:30:00Z"
 }
 ```
   * `404 Not Found`: Projeto não encontrado.
-  * `422 Unprocessable Entity`: Data retroativa ou campos obrigatórios ausentes.
+  * `422 Unprocessable Entity`: Data retroativa (se fornecida) ou campos obrigatórios ausentes.
 
 ---
 
@@ -408,7 +413,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ### 5.1 Regras de Negócio (RN)
 * **RN-01 (Validação de Título):** O título da tarefa deve conter entre 3 e 100 caracteres e não pode ser composto apenas por espaços em branco.
-* **RN-02 (Data de Vencimento Futura):** A `due_date` de uma nova tarefa deve obrigatoriamente ser posterior ao momento da requisição (`due_date > agora`).
+* **RN-02 (Data de Vencimento Futura - Opcional):** A `due_date` é opcional na criação. Quando fornecida, deve obrigatoriamente ser posterior ao momento da requisição (`due_date > agora`). Pode ser atribuída posteriormente através da edição.
 * **RN-03 (Valores Permitidos de Enums):**
   * `status`: Apenas `PENDING`, `IN_PROGRESS`, `COMPLETED`.
   * `priority`: Apenas `LOW`, `MEDIUM`, `HIGH`.
