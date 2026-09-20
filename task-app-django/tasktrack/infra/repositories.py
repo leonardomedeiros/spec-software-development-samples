@@ -220,3 +220,6 @@ class DjangoTaskRepository(ITaskRepository):
         task.created_at = orm_task.created_at
         task.updated_at = orm_task.updated_at
         return task
+
+    def delete(self, task_id: UUID) -> None:
+        TaskModel.objects.filter(id=task_id).delete()

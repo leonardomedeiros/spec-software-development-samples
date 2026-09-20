@@ -74,3 +74,7 @@ class ITaskRepository(ABC):
     @abstractmethod
     def save(self, task: Task) -> Task:
         pass
+
+    @abstractmethod
+    def delete(self, task_id: UUID) -> None:
+        pass

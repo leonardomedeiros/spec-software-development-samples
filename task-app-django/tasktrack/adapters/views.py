@@ -39,6 +39,7 @@ from ..schemas.schemas import (
     UpdateContractStatusSchema,
     UpdateProjectStatusSchema,
     UpdateTaskStatusSchema,
+    UpdateTaskSchema,
 )
 from ..use_cases.use_cases import (
     CreateContractUseCase,
@@ -49,6 +50,8 @@ from ..use_cases.use_cases import (
     UpdateContractStatusUseCase,
     UpdateProjectStatusUseCase,
     UpdateTaskStatusUseCase,
+    UpdateTaskUseCase,
+    DeleteTaskUseCase,
 )
 
 user_repo = DjangoUserRepository()
@@ -325,6 +328,58 @@ def web_update_task_status_view(request, task_id: str):
 
 
 @login_required(login_url="/login")
+def web_update_task_view(request, task_id: str):
+    if request.method == "POST":
+        title = request.POST.get("title", "").strip() or None
+        description = request.POST.get("description", "").strip() or None
+        priority = request.POST.get("priority") or None
+        assignee_id_str = request.POST.get("assignee_id", "").strip()
+        due_date_str = request.POST.get("due_date", "").strip()
+
+        try:
+            due_date = None
+            if due_date_str:
+                due_date = datetime.fromisoformat(due_date_str)
+                if due_date.tzinfo is None:
+                    due_date = due_date.replace(tzinfo=timezone.utc)
+
+            dto = UpdateTaskSchema(
+                title=title,
+                description=description,
+                priority=TaskPriority(priority) if priority else None,
+                assignee_id=UUID(assignee_id_str) if assignee_id_str else None,
+                due_date=due_date,
+            )
+            use_case = UpdateTaskUseCase(task_repo=task_repo, user_repo=user_repo)
+            use_case.execute(UUID(task_id), dto)
+            messages.success(request, "Tarefa atualizada com sucesso!")
+        except ValidationError as e:
+            msg = e.errors()[0].get("msg", "Dados da tarefa inválidos.")
+            messages.error(request, f"Erro ao atualizar tarefa: {msg}")
+        except DomainError as e:
+            messages.error(request, f"Erro de domínio: {e}")
+        except Exception as e:
+            messages.error(request, f"Erro ao processar dados da tarefa: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_delete_task_view(request, task_id: str):
+    if request.method == "POST":
+        try:
+            use_case = DeleteTaskUseCase(task_repo=task_repo)
+            use_case.execute(UUID(task_id))
+            messages.success(request, "Tarefa excluída com sucesso!")
+        except DomainError as e:
+            messages.error(request, f"Erro ao excluir tarefa: {e}")
+        except Exception as e:
+            messages.error(request, f"Erro ao excluir tarefa: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
 def web_create_user_view(request):
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
@@ -552,6 +607,60 @@ def task_status_view(request, task_id: str):
             return JsonResponse({"error": e.message}, status=404)
         except InvalidStatusTransitionError as e:
             return JsonResponse({"error": e.code, "message": e.message}, status=400)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"detail": "Método não permitido"}, status=405)
+
+
+@csrf_exempt
+def task_view(request, task_id: str):
+    try:
+        task_uuid = UUID(task_id)
+    except ValueError:
+        return JsonResponse({"detail": "UUID da tarefa inválido"}, status=422)
+
+    if request.method in ["PUT", "PATCH"]:
+        try:
+            body = json.loads(request.body.decode("utf-8")) if request.body else {}
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "JSON inválido"}, status=422)
+
+        try:
+            dto = UpdateTaskSchema(**body)
+        except ValidationError as e:
+            return _format_pydantic_error(e)
+
+        use_case = UpdateTaskUseCase(task_repo=task_repo, user_repo=user_repo)
+        try:
+            task = use_case.execute(task_uuid, dto)
+            response_dto = TaskResponseSchema(
+                id=task.id,
+                project_id=task.project_id,
+                title=task.title,
+                description=task.description,
+                status=task.status,
+                priority=task.priority,
+                assignee_id=task.assignee_id,
+                due_date=task.due_date,
+                created_at=task.created_at,
+                updated_at=task.updated_at,
+            )
+            return JsonResponse(response_dto.model_dump(mode="json"), status=200)
+        except TaskNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
+        except UserNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    elif request.method == "DELETE":
+        use_case = DeleteTaskUseCase(task_repo=task_repo)
+        try:
+            use_case.execute(task_uuid)
+            return JsonResponse({"message": "Tarefa excluída com sucesso"}, status=204)
+        except TaskNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
         except DomainError as e:
             return JsonResponse({"error": str(e)}, status=400)
 

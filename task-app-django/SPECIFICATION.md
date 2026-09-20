@@ -161,6 +161,8 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Gerenciar equipe do projeto:** `POST /web/projects/{project_id}/team` (Campos: `action` com `add` ou `remove`, e `user_id`).
 * **Cadastrar Tarefa:** `POST /web/tasks` (Campos: `project_id`, `title`, `description`, `priority`, `assignee_id`, `due_date`).
 * **Alterar Status:** `POST /web/tasks/{task_id}/status` (Campo: `status`).
+* **Editar Tarefa:** `POST /web/tasks/{task_id}` (Campos opcionais: `title`, `description`, `priority`, `assignee_id`, `due_date`).
+* **Excluir Tarefa:** `POST /web/tasks/{task_id}/delete` (Sem campos).
 * **Cadastrar Usuário:** `POST /web/users` (Campos: `name`, `email`, `password`, `password_confirmation`, `role`).
 * **Entrar:** `POST /login` (Campos: `username` com o e-mail e `password`).
 * **Sair:** `GET /logout`.
@@ -281,6 +283,37 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ---
 
+### 4.5 Editar Tarefa
+* **Endpoint:** `PUT /api/v1/tasks/{task_id}` ou `PATCH /api/v1/tasks/{task_id}`
+* **Descrição:** Atualiza os campos de uma tarefa existente.
+* **Path Parameter:** `task_id` (UUID)
+* **Request Body (todos os campos opcionais):**
+```json
+{
+  "title": "Novo título da tarefa",
+  "description": "Nova descrição.",
+  "priority": "HIGH",
+  "assignee_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+  "due_date": "2026-11-30T23:59:59Z"
+}
+```
+* **Respostas:**
+  * `200 OK`: Retorna o objeto completo da tarefa atualizada.
+  * `404 Not Found`: Tarefa não encontrada.
+  * `422 Unprocessable Entity`: Dados de entrada inválidos (ex: data retroativa, título muito curto).
+
+---
+
+### 4.6 Excluir Tarefa
+* **Endpoint:** `DELETE /api/v1/tasks/{task_id}`
+* **Descrição:** Remove uma tarefa do sistema de forma permanente.
+* **Path Parameter:** `task_id` (UUID)
+* **Respostas:**
+  * `204 No Content`: Tarefa excluída com sucesso.
+  * `404 Not Found`: Tarefa não encontrada.
+
+---
+
 ## 5. Regras de Negócio e Casos de Borda
 
 ### 5.1 Regras de Negócio (RN)
@@ -299,6 +332,9 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **CB-02 (Data no Passado):** Enviar `due_date = "2020-01-01T00:00:00Z"` deve ser interceptado pelo Pydantic e retornar `422 Unprocessable Entity` com mensagem `"A data de vencimento não pode ser no passado."`.
 * **CB-03 (Reabertura Inválida):** Tentar alterar o status de `COMPLETED` para `IN_PROGRESS` deve retornar `400 Bad Request` com código de erro de domínio `"INVALID_STATUS_TRANSITION"`.
 * **CB-04 (Usuário Inexistente):** Informar um `assignee_id` não cadastrado deve retornar `404 Not Found` com a mensagem `"Usuário atribuído não existe"`.
+* **CB-05 (Edição Parcial):** Ao editar uma tarefa, enviar apenas `title` e `due_date` deve atualizar apenas esses campos, mantendo os demais inalterados.
+* **CB-06 (Edição de Tarefa Inexistente):** Tentar editar uma tarefa com `task_id` inexistente deve retornar `404 Not Found` com mensagem `"Tarefa não encontrada"`.
+* **CB-07 (Exclusão de Tarefa Inexistente):** Tentar excluir uma tarefa com `task_id` inexistente deve retornar `404 Not Found` com mensagem `"Tarefa não encontrada"`.
 
 ---
 

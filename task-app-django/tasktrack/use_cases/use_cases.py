@@ -185,3 +185,42 @@ class UpdateTaskStatusUseCase:
         # RN-04 / CB-03: Valida a transição de status no domínio
         task.change_status(dto.status)
         return self.task_repo.save(task)
+
+
+class UpdateTaskUseCase:
+    def __init__(self, task_repo: ITaskRepository, user_repo: IUserRepository):
+        self.task_repo = task_repo
+        self.user_repo = user_repo
+
+    def execute(self, task_id: UUID, dto) -> Task:
+        task = self.task_repo.get_by_id(task_id)
+        if not task:
+            raise TaskNotFoundError("Tarefa não encontrada")
+
+        if dto.title is not None:
+            task.title = dto.title
+        if dto.description is not None:
+            task.description = dto.description
+        if dto.priority is not None:
+            task.priority = dto.priority
+        if dto.assignee_id is not None:
+            assignee = self.user_repo.get_by_id(dto.assignee_id)
+            if not assignee:
+                raise UserNotFoundError("Usuário atribuído não existe")
+            task.assignee_id = dto.assignee_id
+        if dto.due_date is not None:
+            task.due_date = dto.due_date
+
+        task.updated_at = datetime.now(timezone.utc)
+        return self.task_repo.save(task)
+
+
+class DeleteTaskUseCase:
+    def __init__(self, task_repo: ITaskRepository):
+        self.task_repo = task_repo
+
+    def execute(self, task_id: UUID) -> None:
+        task = self.task_repo.get_by_id(task_id)
+        if not task:
+            raise TaskNotFoundError("Tarefa não encontrada")
+        self.task_repo.delete(task_id)
