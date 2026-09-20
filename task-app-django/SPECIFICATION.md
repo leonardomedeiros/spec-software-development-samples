@@ -88,7 +88,11 @@ Os campos TEXT são armazenados como markdown puro no BD (até 65KB por campo).
 
 A `due_date` (data de vencimento) é um campo **OPCIONAL** que usa o tipo `DATE` (sem hora):
 * **Formato:** `YYYY-MM-DD` (ex: `"2026-12-31"`)
-* **Armazenamento:** Tipo `DATE` no PostgreSQL (apenas data, sem componente de hora)
+* **Armazenamento:** 
+  - **PostgreSQL/SQL:** Tipo `DATE` (apenas data, sem componente de hora)
+  - **Django ORM:** `models.DateField(null=True, blank=True)`
+  - **Python:** Tipo `date` do módulo `datetime` (ou `None`)
+  - **Banco de dados:** Pode ser `NULL`
 * **Validação:**
   - Quando fornecida, deve ser **posterior ao dia atual** (não aceita datas passadas nem a data de hoje)
   - Campo vazio no formulário é equivalente a `null` no banco de dados

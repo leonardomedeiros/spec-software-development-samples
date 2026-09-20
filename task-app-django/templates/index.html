@@ -682,10 +682,13 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Handle create task form
-        const createTaskForm = document.querySelector('form[action="/web/tasks"]');
-        if (createTaskForm) {
-            createTaskForm.addEventListener('submit', function(e) {
+        // Handle create task form - find the form inside the modalTask
+        const modalTask = document.getElementById('modalTask');
+        if (modalTask) {
+            const createTaskForm = modalTask.querySelector('form[action="/web/tasks"]');
+            console.log('Create task form found:', createTaskForm);
+            if (createTaskForm) {
+                createTaskForm.addEventListener('submit', function(e) {
                 e.preventDefault();
 
                 const formData = new FormData(createTaskForm);
@@ -714,14 +717,16 @@
                         window.location.reload();
                     } else {
                         return response.text().then(text => {
-                            alert('Erro ao processar dados da tarefa: ' + text);
+                            alert('Erro ao processar dados da tarefa:\n' + text);
                         });
                     }
                 })
                 .catch(error => {
+                    console.error('Erro no fetch:', error);
                     alert('Erro ao processar dados da tarefa: ' + error);
                 });
-            });
+                });
+            }
         }
 
         // Handle edit task form
@@ -760,7 +765,6 @@
                 document.getElementById('editTaskGithubUrl').value = taskGithubUrl;
 
                 formEl.action = `/web/tasks/${taskId}`;
-                console.log('Modal opened for task:', taskId, 'Form action:', formEl.action);
             });
 
             formEl.addEventListener('submit', function(e) {
@@ -801,7 +805,7 @@
                         window.location.reload();
                     } else {
                         return response.text().then(text => {
-                            alert('Erro ao atualizar tarefa: ' + text);
+                            alert('Erro ao atualizar tarefa:\n' + text);
                         });
                     }
                 })

@@ -104,7 +104,7 @@ class TaskModel(models.Model):
         blank=True,
         related_name="assigned_tasks",
     )
-    due_date = models.DateTimeField()
+    due_date = models.DateField(null=True, blank=True)
     github_url = models.CharField(
         max_length=255,
         blank=True,
