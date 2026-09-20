@@ -403,7 +403,7 @@
                             </button>
                             <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir tarefa" onclick="return confirm('Tem certeza que deseja excluir esta tarefa?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir tarefa" >
                                     <i class="bi bi-trash me-1"></i> Excluir
                                 </button>
                             </form>
@@ -448,7 +448,7 @@
                             </button>
                             <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir tarefa" onclick="return confirm('Tem certeza que deseja excluir esta tarefa?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir tarefa" >
                                     <i class="bi bi-trash me-1"></i> Excluir
                                 </button>
                             </form>
