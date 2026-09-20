@@ -280,9 +280,11 @@ def web_create_task_view(request):
         due_date_str = request.POST.get("due_date", "")
 
         try:
-            due_date = datetime.fromisoformat(due_date_str)
-            if due_date.tzinfo is None:
-                due_date = due_date.replace(tzinfo=timezone.utc)
+            due_date = None
+            if due_date_str:
+                due_date = datetime.fromisoformat(due_date_str)
+                if due_date.tzinfo is None:
+                    due_date = due_date.replace(tzinfo=timezone.utc)
 
             dto = CreateTaskSchema(
                 title=title,
