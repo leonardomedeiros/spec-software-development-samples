@@ -32,8 +32,8 @@ urlpatterns = [
     path("web/projects/<str:project_id>/team", web_update_project_team_view, name="web_update_project_team"),
     path("web/tasks", web_create_task_view, name="web_create_task"),
     path("web/tasks/<str:task_id>/status", web_update_task_status_view, name="web_update_task_status"),
-    path("web/tasks/<str:task_id>", web_update_task_view, name="web_update_task"),
     path("web/tasks/<str:task_id>/delete", web_delete_task_view, name="web_delete_task"),
+    path("web/tasks/<str:task_id>", web_update_task_view, name="web_update_task"),
     path("web/users", web_create_user_view, name="web_create_user"),
 
     # REST API Endpoints (v1)
