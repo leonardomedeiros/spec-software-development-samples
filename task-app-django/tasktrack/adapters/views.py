@@ -331,18 +331,33 @@ def web_update_task_status_view(request, task_id: str):
 def web_update_task_view(request, task_id: str):
     if request.method == "POST":
         try:
+            # Get and validate task exists first
+            try:
+                task_uuid = UUID(task_id)
+            except ValueError:
+                messages.error(request, "ID da tarefa inválido.")
+                return redirect("/")
+
+            task = task_repo.get_by_id(task_uuid)
+            if not task:
+                messages.error(request, "Tarefa não encontrada.")
+                return redirect("/")
+
+            # Extract form data
             title = request.POST.get("title", "").strip()
             description = request.POST.get("description", "").strip()
             priority_str = request.POST.get("priority", "").strip()
             assignee_id_str = request.POST.get("assignee_id", "").strip()
             due_date_str = request.POST.get("due_date", "").strip()
 
+            # Parse due_date
             due_date = None
             if due_date_str:
                 due_date = datetime.fromisoformat(due_date_str)
                 if due_date.tzinfo is None:
                     due_date = due_date.replace(tzinfo=timezone.utc)
 
+            # Build DTO with None for empty fields (partial update)
             dto = UpdateTaskSchema(
                 title=title if title else None,
                 description=description if description else None,
@@ -350,20 +365,25 @@ def web_update_task_view(request, task_id: str):
                 assignee_id=UUID(assignee_id_str) if assignee_id_str else None,
                 due_date=due_date,
             )
+
+            # Execute use case
             use_case = UpdateTaskUseCase(task_repo=task_repo, user_repo=user_repo)
-            use_case.execute(UUID(task_id), dto)
+            use_case.execute(task_uuid, dto)
             messages.success(request, "Tarefa atualizada com sucesso!")
+
         except ValidationError as e:
-            msg = e.errors()[0].get("msg", "Dados da tarefa inválidos.")
-            messages.error(request, f"Erro ao atualizar tarefa: {msg}")
-        except ValueError as e:
-            messages.error(request, f"Dados inválidos: {str(e)}")
+            msg = e.errors()[0].get("msg", "Dados inválidos.")
+            messages.error(request, f"Erro de validação: {msg}")
+        except UserNotFoundError as e:
+            messages.error(request, f"Usuário não encontrado: {e.message}")
         except TaskNotFoundError as e:
             messages.error(request, f"Tarefa não encontrada: {e.message}")
+        except ValueError as e:
+            messages.error(request, f"Dados inválidos: {str(e)}")
         except DomainError as e:
             messages.error(request, f"Erro de domínio: {e}")
         except Exception as e:
-            messages.error(request, f"Erro ao processar dados da tarefa: {str(e)}")
+            messages.error(request, f"Erro ao atualizar tarefa: {str(e)}")
 
     return redirect("/")
 

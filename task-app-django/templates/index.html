@@ -614,7 +614,7 @@
 <!-- MODAL: EDITAR TAREFA -->
 <div class="modal fade" id="modalEditTask" tabindex="-1" aria-labelledby="modalEditTaskLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form method="POST" id="formEditTask">
+        <form method="POST" id="formEditTask" action="">
             {% csrf_token %}
             <div class="modal-content">
                 <div class="modal-header">
@@ -622,18 +622,20 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <input type="hidden" id="currentTaskId" value="">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Título da Tarefa (3 a 100 caracteres) *</label>
-                        <input type="text" name="title" id="editTaskTitle" class="form-control" minlength="3" maxlength="100">
+                        <label class="form-label fw-semibold">Título da Tarefa (3 a 100 caracteres)</label>
+                        <input type="text" name="title" id="editTaskTitle" class="form-control" minlength="3" maxlength="100" placeholder="Deixe vazio para não alterar">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Descrição</label>
-                        <textarea name="description" id="editTaskDescription" class="form-control" rows="2"></textarea>
+                        <textarea name="description" id="editTaskDescription" class="form-control" rows="2" placeholder="Deixe vazio para não alterar"></textarea>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">Prioridade *</label>
+                            <label class="form-label fw-semibold">Prioridade</label>
                             <select name="priority" id="editTaskPriority" class="form-select">
+                                <option value="">Não alterar</option>
                                 <option value="LOW">LOW (Baixa)</option>
                                 <option value="MEDIUM">MEDIUM (Média)</option>
                                 <option value="HIGH">HIGH (Alta)</option>
@@ -642,7 +644,7 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Responsável</label>
                             <select name="assignee_id" id="editTaskAssignee" class="form-select">
-                                <option value="">Nenhum (Opcional)</option>
+                                <option value="">Nenhum</option>
                                 {% for u in users %}
                                     <option value="{{ u.id }}">{{ u.name }}</option>
                                 {% endfor %}
@@ -650,7 +652,7 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Data de Vencimento (deve ser futura) *</label>
+                        <label class="form-label fw-semibold">Data de Vencimento (deve ser futura)</label>
                         <input type="datetime-local" name="due_date" id="editTaskDueDate" class="form-control">
                     </div>
                 </div>
@@ -665,33 +667,35 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const modalEditTask = document.getElementById('modalEditTask');
-        const formEditTask = document.getElementById('formEditTask');
-        const editTaskTitle = document.getElementById('editTaskTitle');
-        const editTaskDescription = document.getElementById('editTaskDescription');
-        const editTaskPriority = document.getElementById('editTaskPriority');
-        const editTaskAssignee = document.getElementById('editTaskAssignee');
-        const editTaskDueDate = document.getElementById('editTaskDueDate');
+        const modalEl = document.getElementById('modalEditTask');
+        const formEl = document.getElementById('formEditTask');
 
-        if (modalEditTask) {
-            modalEditTask.addEventListener('show.bs.modal', function(e) {
-                const button = e.relatedTarget;
+        if (modalEl) {
+            modalEl.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
                 if (!button) return;
 
                 const taskId = button.getAttribute('data-task-id');
                 const taskTitle = button.getAttribute('data-task-title') || '';
-                const taskDescription = button.getAttribute('data-task-description') || '';
-                const taskPriority = button.getAttribute('data-task-priority') || 'MEDIUM';
+                const taskDesc = button.getAttribute('data-task-description') || '';
+                const taskPrio = button.getAttribute('data-task-priority') || '';
                 const taskAssignee = button.getAttribute('data-task-assignee') || '';
                 const taskDueDate = button.getAttribute('data-task-due-date') || '';
 
-                editTaskTitle.value = taskTitle;
-                editTaskDescription.value = taskDescription;
-                editTaskPriority.value = taskPriority;
-                editTaskAssignee.value = taskAssignee;
-                editTaskDueDate.value = taskDueDate;
+                document.getElementById('currentTaskId').value = taskId;
+                document.getElementById('editTaskTitle').value = taskTitle;
+                document.getElementById('editTaskDescription').value = taskDesc;
+                document.getElementById('editTaskPriority').value = taskPrio;
+                document.getElementById('editTaskAssignee').value = taskAssignee;
+                document.getElementById('editTaskDueDate').value = taskDueDate;
 
-                formEditTask.action = `/web/tasks/${taskId}`;
+                formEl.action = `/web/tasks/${taskId}`;
+                console.log('Modal opened for task:', taskId, 'Form action:', formEl.action);
+            });
+
+            formEl.addEventListener('submit', function(e) {
+                const taskId = document.getElementById('currentTaskId').value;
+                console.log('Form submitted for task:', taskId);
             });
         }
     });
