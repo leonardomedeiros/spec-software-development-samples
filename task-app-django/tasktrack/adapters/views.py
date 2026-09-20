@@ -114,6 +114,10 @@ def home_view(request):
     for c in contracts:
         c.owner_name = user_map.get(c.owner_id, "") if c.owner_id else ""
 
+    prospecting_contracts = [c for c in contracts if c.status == ContractStatus.PROSPECTING]
+    in_progress_contracts = [c for c in contracts if c.status == ContractStatus.IN_PROGRESS]
+    signed_contracts = [c for c in contracts if c.status == ContractStatus.SIGNED]
+
     tasks_by_project = {}
     for task in tasks:
         tasks_by_project.setdefault(task.project_id, []).append(task)
@@ -139,6 +143,9 @@ def home_view(request):
         "projects": projects,
         "users": users,
         "contracts": contracts,
+        "prospecting_contracts": prospecting_contracts,
+        "in_progress_contracts": in_progress_contracts,
+        "signed_contracts": signed_contracts,
         "selected_project_id": selected_project_id,
         "MEDIA_URL": settings.MEDIA_URL,
         "pending_tasks": pending_tasks,

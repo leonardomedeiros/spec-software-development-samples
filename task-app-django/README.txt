@@ -28,6 +28,7 @@ uv sync
 
    Crie o módulo de Domínio em /workspace/tasktrack/domain/models.py seguindo as entidades, enums e regras de status definidas em /workspace/SPECIFICATION.md. Salve o arquivo usando a ferramenta 'write'.
    "
-
-
+## Criação do Primeiro Usuário
+* Para inicializar uma base sem usuários, disponibilizar o comando:
+  `python manage.py create_tasktrack_user --name "Nome" --email usuario@exemplo.com --password "senha-segura" --role MANAGER`.
    

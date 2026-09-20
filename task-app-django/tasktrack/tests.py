@@ -3,12 +3,13 @@ import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from django.contrib.auth.models import User as AuthUser
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 import pytest
 
 from tasktrack.domain.entities import Contract, Project, Task, User
-from tasktrack.domain.enums import TaskPriority, TaskStatus, UserRole
+from tasktrack.domain.enums import ContractStatus, TaskPriority, TaskStatus, UserRole
 from tasktrack.domain.exceptions import (
     InvalidStatusTransitionError,
     ProjectNotFoundError,
@@ -57,15 +58,34 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
             )
         )
 
-        # Cria projeto base
+        # Cria contrato base (projeto depende de um contrato - migration 0005)
+        self.contract = self.contract_repo.save(
+            Contract(
+                id=uuid.UUID("b1d4b31e-6a8c-4c9a-a1a5-5f3c7e1f3a2b"),
+                title="Contrato Base",
+                description="Contrato de referência para os testes.",
+                owner_id=self.user.id,
+            )
+        )
+
+        # Cria projeto base vinculado ao contrato
         self.project = self.project_repo.save(
             Project(
                 id=uuid.UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
+                contract_id=self.contract.id,
                 title="Reformulação do E-commerce",
                 description="Projeto focado na migração da vitrine.",
                 owner_id=self.user.id,
             )
         )
+
+        # Usuário de autenticação (views web exigem login_required)
+        self.auth_user = AuthUser.objects.create_user(
+            username=self.user.email,
+            email=self.user.email,
+            password="tasktrack-teste-2024",
+        )
+        self.client.force_login(self.auth_user)
 
     def tearDown(self):
         self.override_media.disable()
@@ -319,7 +339,42 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(ContractModel.objects.count(), 1)
-        contract = ContractModel.objects.get()
+        self.assertEqual(ContractModel.objects.filter(title="Termo de Adesão").count(), 1)
+        contract = ContractModel.objects.get(title="Termo de Adesão")
         self.assertEqual(contract.title, "Termo de Adesão")
         self.assertTrue(contract.contract_file.startswith("contracts/"))
+
+    def test_web_update_contract_status_success(self):
+        """Web: POST /web/contracts/{id}/status atualiza o status do contrato."""
+        response = self.client.post(
+            f"/web/contracts/{self.contract.id}/status",
+            {"status": "IN_PROGRESS"},
+        )
+        self.assertEqual(response.status_code, 302)
+        updated = self.contract_repo.get_by_id(self.contract.id)
+        self.assertEqual(updated.status.value, ContractStatus.IN_PROGRESS.value)
+
+    def test_web_update_contract_status_invalid_transition(self):
+        """Web: contrato SIGNED não pode retornar para IN_PROGRESS (estado final)."""
+        signed = self.contract_repo.save(
+            Contract(
+                title="Contrato Assinado",
+                owner_id=self.user.id,
+                status=ContractStatus.SIGNED,
+            )
+        )
+        response = self.client.post(
+            f"/web/contracts/{signed.id}/status",
+            {"status": "IN_PROGRESS"},
+        )
+        self.assertEqual(response.status_code, 302)
+        updated = self.contract_repo.get_by_id(signed.id)
+        self.assertEqual(updated.status.value, ContractStatus.SIGNED.value)
+
+    def test_web_update_contract_status_contract_not_found(self):
+        """Web: contrato inexistente gera mensagem de erro."""
+        response = self.client.post(
+            f"/web/contracts/{uuid.uuid4()}/status",
+            {"status": "IN_PROGRESS"},
+        )
+        self.assertEqual(response.status_code, 302)
