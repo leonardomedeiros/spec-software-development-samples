@@ -155,7 +155,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ### 3.2 Ações e Formulários Web
 * **Adicionar Contrato:** `POST /web/contracts` (Campos: `title`, `description`, `contract_file`, `owner_id`). Um contrato não recebe `contract_id`.
-* **Criar Projeto:** `POST /web/projects` (Campos: `title`, `description`, `owner_id`).
+* **Criar Projeto:** `POST /web/projects` (Campos: `contract_id`, `title`, `description`, `owner_id`). O formulário deve exigir a seleção de um contrato existente; não é permitido criar projeto sem contrato.
 * **Alterar status do contrato:** `POST /web/contracts/{contract_id}/status` (Campo: `status`, com valores `PROSPECTING`, `IN_PROGRESS` ou `SIGNED`). A interface web expõe apenas as transições válidas conforme a seção 2.3; transições inválidas são rejeitadas no domínio com erro `INVALID_STATUS_TRANSITION`.
 * **Alterar status do projeto:** `POST /web/projects/{project_id}/status` (Campo: `status`). A operação sincroniza o status das tarefas do projeto conforme as regras da seção 2.3.
 * **Gerenciar equipe do projeto:** `POST /web/projects/{project_id}/team` (Campos: `action` com `add` ou `remove`, e `user_id`).
@@ -206,6 +206,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Request Body:**
 ```json
 {
+  "contract_id": "b14e7bd1-6c42-4e27-9e94-19f79a8061a9",
   "title": "Reformulação do E-commerce",
   "description": "Projeto focado na migração da vitrine de produtos.",
   "owner_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
@@ -216,13 +217,14 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 ```json
 {
   "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "contract_id": "b14e7bd1-6c42-4e27-9e94-19f79a8061a9",
   "title": "Reformulação do E-commerce",
   "description": "Projeto focado na migração da vitrine de produtos.",
   "owner_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
   "created_at": "2026-09-12T08:00:00Z"
 }
 ```
-  * `400 Bad Request`: Usuário proprietário não encontrado.
+  * `400 Bad Request`: Usuário proprietário ou contrato não encontrado.
   * `422 Unprocessable Entity`: Dados de entrada inválidos.
 
 ---
