@@ -682,26 +682,32 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Handle create task form - remove empty optional fields
+        // Handle create task form
         const createTaskForm = document.querySelector('form[action="/web/tasks"]');
         if (createTaskForm) {
             createTaskForm.addEventListener('submit', function(e) {
                 e.preventDefault();
 
                 const formData = new FormData(createTaskForm);
+                const csrfToken = formData.get('csrfmiddlewaretoken');
 
-                // Remove empty optional fields so they don't get sent as empty strings
-                if (!formData.get('due_date')) {
-                    formData.delete('due_date');
-                }
-                if (!formData.get('assignee_id')) {
-                    formData.delete('assignee_id');
-                }
+                // Build request body as URL-encoded form data
+                const params = new URLSearchParams();
+                params.append('csrfmiddlewaretoken', csrfToken);
+                params.append('project_id', formData.get('project_id'));
+                params.append('title', formData.get('title'));
+                params.append('description', formData.get('description') || '');
+                params.append('priority', formData.get('priority'));
+                params.append('assignee_id', formData.get('assignee_id') || '');
+                params.append('due_date', formData.get('due_date') || '');
 
                 // Submit using fetch
                 fetch(createTaskForm.action, {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: params.toString()
                 })
                 .then(response => {
                     if (response.ok) {
@@ -732,8 +738,18 @@
                 const taskDesc = button.getAttribute('data-task-description') || '';
                 const taskPrio = button.getAttribute('data-task-priority') || '';
                 const taskAssignee = button.getAttribute('data-task-assignee') || '';
-                const taskDueDate = button.getAttribute('data-task-due-date') || '';
+                const taskDueDateRaw = button.getAttribute('data-task-due-date') || '';
                 const taskGithubUrl = button.getAttribute('data-task-github-url') || '';
+
+                // Convert datetime/date string to YYYY-MM-DD format for date input
+                let taskDueDate = '';
+                if (taskDueDateRaw) {
+                    // Handle both ISO datetime and date formats
+                    const dateObj = new Date(taskDueDateRaw);
+                    if (!isNaN(dateObj.getTime())) {
+                        taskDueDate = dateObj.toISOString().split('T')[0];
+                    }
+                }
 
                 document.getElementById('currentTaskId').value = taskId;
                 document.getElementById('editTaskTitle').value = taskTitle;
@@ -752,30 +768,33 @@
 
                 const taskId = document.getElementById('currentTaskId').value;
                 const formData = new FormData(formEl);
+                const csrfToken = formData.get('csrfmiddlewaretoken');
 
-                // Remove empty optional fields
-                if (!formData.get('due_date')) {
-                    formData.delete('due_date');
-                }
-                if (!formData.get('assignee_id')) {
-                    formData.delete('assignee_id');
-                }
-                if (!formData.get('title')) {
-                    formData.delete('title');
-                }
-                if (!formData.get('description')) {
-                    formData.delete('description');
-                }
-                if (!formData.get('priority')) {
-                    formData.delete('priority');
-                }
-                if (!formData.get('github_url')) {
-                    formData.delete('github_url');
-                }
+                // Build request body as URL-encoded form data
+                const params = new URLSearchParams();
+                params.append('csrfmiddlewaretoken', csrfToken);
+
+                // Add all fields, empty ones will be sent as empty strings
+                const title = formData.get('title') || '';
+                const description = formData.get('description') || '';
+                const priority = formData.get('priority') || '';
+                const assigneeId = formData.get('assignee_id') || '';
+                const dueDate = formData.get('due_date') || '';
+                const githubUrl = formData.get('github_url') || '';
+
+                if (title) params.append('title', title);
+                if (description) params.append('description', description);
+                if (priority) params.append('priority', priority);
+                if (assigneeId) params.append('assignee_id', assigneeId);
+                if (dueDate) params.append('due_date', dueDate);
+                if (githubUrl) params.append('github_url', githubUrl);
 
                 fetch(formEl.action, {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: params.toString()
                 })
                 .then(response => {
                     if (response.ok) {
