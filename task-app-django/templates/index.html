@@ -682,6 +682,43 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Handle create task form - remove empty optional fields
+        const createTaskForm = document.querySelector('form[action="/web/tasks"]');
+        if (createTaskForm) {
+            createTaskForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const formData = new FormData(createTaskForm);
+
+                // Remove empty optional fields so they don't get sent as empty strings
+                if (!formData.get('due_date')) {
+                    formData.delete('due_date');
+                }
+                if (!formData.get('assignee_id')) {
+                    formData.delete('assignee_id');
+                }
+
+                // Submit using fetch
+                fetch(createTaskForm.action, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        return response.text().then(text => {
+                            alert('Erro ao processar dados da tarefa: ' + text);
+                        });
+                    }
+                })
+                .catch(error => {
+                    alert('Erro ao processar dados da tarefa: ' + error);
+                });
+            });
+        }
+
+        // Handle edit task form
         const modalEl = document.getElementById('modalEditTask');
         const formEl = document.getElementById('formEditTask');
 
@@ -711,8 +748,47 @@
             });
 
             formEl.addEventListener('submit', function(e) {
+                e.preventDefault();
+
                 const taskId = document.getElementById('currentTaskId').value;
-                console.log('Form submitted for task:', taskId);
+                const formData = new FormData(formEl);
+
+                // Remove empty optional fields
+                if (!formData.get('due_date')) {
+                    formData.delete('due_date');
+                }
+                if (!formData.get('assignee_id')) {
+                    formData.delete('assignee_id');
+                }
+                if (!formData.get('title')) {
+                    formData.delete('title');
+                }
+                if (!formData.get('description')) {
+                    formData.delete('description');
+                }
+                if (!formData.get('priority')) {
+                    formData.delete('priority');
+                }
+                if (!formData.get('github_url')) {
+                    formData.delete('github_url');
+                }
+
+                fetch(formEl.action, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        return response.text().then(text => {
+                            alert('Erro ao atualizar tarefa: ' + text);
+                        });
+                    }
+                })
+                .catch(error => {
+                    alert('Erro ao atualizar tarefa: ' + error);
+                });
             });
         }
     });
