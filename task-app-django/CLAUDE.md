@@ -231,15 +231,49 @@ When adding features or fixing bugs:
 9. **Are migrations versioned?** (`uv.lock` checked in)
 10. **Is new code covered by tests?** (or noted as untestable in UI)
 
-## Git Commit Convention
+## Git Commit Policy
 
-Each commit should reference the feature/fix and include:
+⚠️ **IMPORTANT: Claude must NEVER make commits automatically without explicit user permission.**
+
+### Rules for Commits
+
+1. **Ask First** - Always ask the user for permission before creating any commit
+2. **Only After Request** - Create a commit ONLY when the user explicitly asks ("commit these changes", "make a commit", etc.)
+3. **No Auto-Save** - Do NOT automatically commit at the end of a task or session
+4. **Show Changes First** - Before committing, run `git status` and `git diff` to show the user what will be committed
+5. **Confirm Message** - Present the proposed commit message to the user for approval before committing
+
+### When User Asks for a Commit
+
+1. Run `git status` to see all changes
+2. Run `git diff` to preview changes
+3. Review recent commits (`git log`) to match commit style
+4. Draft commit message following the convention below
+5. Show message to user for approval
+6. Only then create commit with `git commit`
+
+### Commit Message Convention
+
+When user requests a commit, follow this format:
+
+```
+feat: brief description of what was added
+
+- Detailed change 1
+- Detailed change 2
+- Detailed change 3
+
+Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+```
+
+Categories:
 - `feat:` new feature  
 - `fix:` bug fix  
 - `docs:` documentation only  
 - `refactor:` code reorganization (no logic change)
 
-Example:
+### Example
+
 ```
 feat: add task edit modal and github_url field
 
@@ -247,6 +281,8 @@ feat: add task edit modal and github_url field
 - Add github_url VARCHAR(255) field to tasks
 - Modal with 400px min-height textarea for descriptions
 - Markdown support documentation in RN-07
+
+Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
 ```
 
-Commits are co-authored with Claude Haiku 4.5 (see system reminders in conversations).
+**The user must explicitly approve before any commit is made.**
