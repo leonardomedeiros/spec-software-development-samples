@@ -2,6 +2,8 @@ from django.urls import path
 from .views import (
     contracts_view,
     home_view,
+    login_view,
+    logout_view,
     project_tasks_view,
     projects_view,
     task_status_view,
@@ -17,6 +19,8 @@ from .views import (
 
 urlpatterns = [
     # Web UI (MVT)
+    path("login", login_view, name="login"),
+    path("logout", logout_view, name="logout"),
     path("", home_view, name="home"),
     path("web/contracts", web_create_contract_view, name="web_create_contract"),
     path("web/projects", web_create_project_view, name="web_create_project"),

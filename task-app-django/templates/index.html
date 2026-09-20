@@ -529,7 +529,19 @@
                         <select name="role" class="form-select">
                             <option value="MEMBER" selected>MEMBER</option>
                             <option value="ADMIN">ADMIN</option>
+                            <option value="DEVELOPER">Developer</option>
+                            <option value="TEST">Test</option>
+                            <option value="MANAGER">Manager</option>
+                            <option value="PRODUCT_OWNER">Product Owner</option>
                         </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Senha *</label>
+                        <input type="password" name="password" class="form-control" minlength="8" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Confirmar senha *</label>
+                        <input type="password" name="password_confirmation" class="form-control" minlength="8" required>
                     </div>
                 </div>
                 <div class="modal-footer">

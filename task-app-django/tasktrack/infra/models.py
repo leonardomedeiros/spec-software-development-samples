@@ -8,7 +8,14 @@ class UserModel(models.Model):
     email = models.EmailField(max_length=255, unique=True)
     role = models.CharField(
         max_length=20,
-        choices=[("ADMIN", "ADMIN"), ("MEMBER", "MEMBER")],
+        choices=[
+            ("ADMIN", "ADMIN"),
+            ("MEMBER", "MEMBER"),
+            ("DEVELOPER", "DEVELOPER"),
+            ("TEST", "TEST"),
+            ("MANAGER", "MANAGER"),
+            ("PRODUCT_OWNER", "PRODUCT_OWNER"),
+        ],
         default="MEMBER",
     )
     created_at = models.DateTimeField(auto_now_add=True)

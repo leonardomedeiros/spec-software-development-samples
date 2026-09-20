@@ -4,6 +4,9 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User as DjangoUser
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.http import JsonResponse
@@ -86,6 +89,7 @@ def _save_contract_file(uploaded_file) -> Optional[str]:
 # WEB TEMPLATE VIEWS (MVT + Bootstrap 5 Dashboard)
 # =====================================================================
 
+@login_required(login_url="/login")
 def home_view(request):
     """Página inicial com Dashboard de Projetos e Kanban de Tarefas."""
     selected_project_id = request.GET.get("project_id")
@@ -144,6 +148,7 @@ def home_view(request):
     return render(request, "index.html", context)
 
 
+@login_required(login_url="/login")
 def web_create_contract_view(request):
     if request.method == "POST":
         title = request.POST.get("title", "")
@@ -178,6 +183,7 @@ def web_create_contract_view(request):
     return redirect("/")
 
 
+@login_required(login_url="/login")
 def web_create_project_view(request):
     if request.method == "POST":
         title = request.POST.get("title", "")
@@ -206,6 +212,7 @@ def web_create_project_view(request):
     return redirect("/")
 
 
+@login_required(login_url="/login")
 def web_update_contract_status_view(request, contract_id: str):
     if request.method == "POST":
         try:
@@ -219,6 +226,7 @@ def web_update_contract_status_view(request, contract_id: str):
     return redirect("/")
 
 
+@login_required(login_url="/login")
 def web_update_project_status_view(request, project_id: str):
     if request.method == "POST":
         try:
@@ -232,6 +240,7 @@ def web_update_project_status_view(request, project_id: str):
     return redirect("/")
 
 
+@login_required(login_url="/login")
 def web_update_project_team_view(request, project_id: str):
     if request.method == "POST":
         try:
@@ -249,6 +258,7 @@ def web_update_project_team_view(request, project_id: str):
     return redirect("/")
 
 
+@login_required(login_url="/login")
 def web_create_task_view(request):
     if request.method == "POST":
         project_id_str = request.POST.get("project_id", "")
@@ -288,6 +298,7 @@ def web_create_task_view(request):
     return redirect("/")
 
 
+@login_required(login_url="/login")
 def web_update_task_status_view(request, task_id: str):
     if request.method == "POST":
         status_str = request.POST.get("status", "")
@@ -306,20 +317,61 @@ def web_update_task_status_view(request, task_id: str):
     return redirect("/")
 
 
+@login_required(login_url="/login")
 def web_create_user_view(request):
     if request.method == "POST":
         name = request.POST.get("name", "").strip()
         email = request.POST.get("email", "").strip()
         role = request.POST.get("role", "MEMBER")
+        password = request.POST.get("password", "")
+        password_confirmation = request.POST.get("password_confirmation", "")
 
-        if name and email:
-            user = User(id=uuid4(), name=name, email=email, role=UserRole(role))
-            user_repo.save(user)
-            messages.success(request, f"Usuário '{name}' cadastrado!")
+        if not name or not email or not password:
+            messages.error(request, "Nome, e-mail e senha são obrigatórios.")
+        elif len(password) < 8:
+            messages.error(request, "A senha deve ter pelo menos 8 caracteres.")
+        elif password != password_confirmation:
+            messages.error(request, "As senhas não conferem.")
+        elif DjangoUser.objects.filter(username=email).exists():
+            messages.error(request, "Já existe um usuário com este e-mail.")
         else:
-            messages.error(request, "Nome e e-mail são obrigatórios.")
+            try:
+                role_enum = UserRole(role)
+                auth_user = DjangoUser.objects.create_user(
+                    username=email,
+                    email=email,
+                    first_name=name,
+                    password=password,
+                )
+                user_repo.save(User(id=uuid4(), name=name, email=email, role=role_enum))
+                messages.success(request, f"Usuário '{name}' cadastrado com acesso ao sistema!")
+            except ValueError:
+                messages.error(request, "Função de usuário inválida.")
+            except Exception:
+                if "auth_user" in locals() and auth_user.pk:
+                    auth_user.delete()
+                messages.error(request, "Não foi possível cadastrar o usuário.")
 
     return redirect("/")
+
+
+def login_view(request):
+    if request.user.is_authenticated:
+        return redirect("/")
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return redirect(request.GET.get("next") or "/")
+        messages.error(request, "E-mail ou senha inválidos.")
+    return render(request, "login.html")
+
+
+def logout_view(request):
+    logout(request)
+    return redirect("/login")
 
 
 # =====================================================================

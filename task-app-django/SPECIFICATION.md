@@ -35,7 +35,7 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    role VARCHAR(20) NOT NULL DEFAULT 'MEMBER', -- 'ADMIN', 'MEMBER'
+    role VARCHAR(20) NOT NULL DEFAULT 'MEMBER', -- 'ADMIN', 'MEMBER', 'DEVELOPER', 'TEST', 'MANAGER', 'PRODUCT_OWNER'
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -99,6 +99,16 @@ CREATE TABLE tasks (
 * Ao excluir um projeto ou usuário, seus vínculos de equipe são removidos em cascata.
 * O proprietário do projeto continua sendo armazenado em `projects.owner_id`; membros da equipe são usuários adicionais autorizados a participar do projeto.
 
+### 2.5 Autenticação e Funções de Usuário
+
+* O acesso à interface web deve usar a autenticação nativa do Django (`django.contrib.auth`), com sessão, login por e-mail e senha e logout.
+* O usuário de autenticação do Django deve ser criado com `username` igual ao e-mail; a senha deve ser armazenada somente pelo mecanismo de hash do Django.
+* O perfil de domínio (`users`) deve manter a função do usuário. Os valores permitidos são `ADMIN`, `MEMBER`, `DEVELOPER`, `TEST`, `MANAGER` e `PRODUCT_OWNER`.
+* O cadastro de usuário deve exigir nome, e-mail, senha, confirmação de senha e função, criando o usuário Django e o perfil de domínio correspondente.
+* O dashboard e as ações web devem exigir usuário autenticado; endpoints REST permanecem independentes da sessão web.
+* Para inicializar uma base sem usuários, disponibilizar o comando:
+  `python manage.py create_tasktrack_user --name "Nome" --email usuario@exemplo.com --password "senha-segura" --role MANAGER`.
+
 ### 2.3 Status de Contratos e Projetos
 
 * **Contrato:** o campo `status` aceita `PROSPECTING`, `IN_PROGRESS` ou `SIGNED`, iniciando em `PROSPECTING`.
@@ -151,7 +161,9 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Gerenciar equipe do projeto:** `POST /web/projects/{project_id}/team` (Campos: `action` com `add` ou `remove`, e `user_id`).
 * **Cadastrar Tarefa:** `POST /web/tasks` (Campos: `project_id`, `title`, `description`, `priority`, `assignee_id`, `due_date`).
 * **Alterar Status:** `POST /web/tasks/{task_id}/status` (Campo: `status`).
-* **Cadastrar Usuário:** `POST /web/users` (Campos: `name`, `email`, `role`).
+* **Cadastrar Usuário:** `POST /web/users` (Campos: `name`, `email`, `password`, `password_confirmation`, `role`).
+* **Entrar:** `POST /login` (Campos: `username` com o e-mail e `password`).
+* **Sair:** `GET /logout`.
 
 ---
 
