@@ -166,12 +166,14 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   * Modal pré-preenchido com dados da tarefa através de `data-*` attributes
   * Suporta atualização parcial: apenas campos alterados são enviados
   * Campos vazios são convertidos para `None` (não atualizam o BD)
-  * Botão (lápis) disponível em tarefas PENDING e IN_PROGRESS
+  * **Botão (lápis) disponível APENAS em tarefas PENDING e IN_PROGRESS**
+  * **Tarefas COMPLETED não podem ser editadas** (RN-04): retorna erro `"Tarefas concluídas não podem ser editadas."`
   * Validação no cliente: título 3-100 caracteres, data deve ser futura
-  * Validação no servidor: valida assignee_id e transições de status
+  * Validação no servidor: valida assignee_id, verificação de status COMPLETED, transições de status
   * Mensagens de sucesso/erro via Django messages
 * **Excluir Tarefa:** `POST /web/tasks/{task_id}/delete` (Sem campos). 
   * Botão (lixeira) disponível em **todas** as tarefas (PENDING, IN_PROGRESS, COMPLETED)
+  * **Tarefas COMPLETED exibem aviso:** *"Tarefa concluída - não pode ser editada"*
   * Exibe confirmação JavaScript: *"Tem certeza que deseja excluir esta tarefa?"*
   * Exclusão permanente e irreversível
   * Responde com redirecionamento para `/` e mensagem de sucesso
@@ -334,9 +336,11 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **RN-03 (Valores Permitidos de Enums):**
   * `status`: Apenas `PENDING`, `IN_PROGRESS`, `COMPLETED`.
   * `priority`: Apenas `LOW`, `MEDIUM`, `HIGH`.
-* **RN-04 (Ciclo de Vida do Status):**
+* **RN-04 (Ciclo de Vida do Status - Imutabilidade de Tarefas Concluídas):**
   * Transições permitidas: `PENDING` ➔ `IN_PROGRESS`, `IN_PROGRESS` ➔ `COMPLETED`, `IN_PROGRESS` ➔ `PENDING`.
   * Transição proibida: Uma tarefa no status `COMPLETED` não pode retornar para `PENDING` ou `IN_PROGRESS`.
+  * **Edição proibida**: Tarefas no status `COMPLETED` não podem ter seus campos editados (título, descrição, prioridade, responsável, data de vencimento).
+  * **Operação permitida**: Apenas exclusão de tarefas `COMPLETED` é permitida (deleção permanente).
 * **RN-05 (Atribuição de Responsável):** Se o `assignee_id` for informado, o sistema deve validar se o UUID existe na tabela `users`.
 
 ### 5.2 Casos de Borda (CB)

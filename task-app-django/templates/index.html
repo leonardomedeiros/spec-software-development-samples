@@ -436,18 +436,23 @@
                             <p class="card-text text-muted small mb-2">{{ task.description }}</p>
                         {% endif %}
                         <div class="small text-muted mb-2">
-                            <div><i class="bi bi-check2-all me-1"></i>Concluída (RN-04: Não reabrir)</div>
+                            <div><i class="bi bi-check2-all me-1"></i>Concluída (RN-04: Não editável)</div>
                             {% if task.assignee_id %}
                                 <div><i class="bi bi-person me-1"></i>Resp: {{ task.assignee_name|default:task.assignee_id }}</div>
                             {% endif %}
                         </div>
                         <hr class="my-2 text-muted">
-                        <form method="POST" action="/web/tasks/{{ task.id }}/delete">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir tarefa" onclick="return confirm('Tem certeza que deseja excluir esta tarefa?')">
-                                <i class="bi bi-trash me-1"></i> Excluir
-                            </button>
-                        </form>
+                        <div class="d-flex gap-2">
+                            <div class="alert alert-info small mb-0 flex-grow-1" role="alert">
+                                <i class="bi bi-info-circle me-1"></i>Tarefa concluída - não pode ser editada
+                            </div>
+                            <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir tarefa" onclick="return confirm('Tem certeza que deseja excluir esta tarefa?')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             {% empty %}

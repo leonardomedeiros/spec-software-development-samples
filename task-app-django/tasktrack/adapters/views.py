@@ -343,6 +343,11 @@ def web_update_task_view(request, task_id: str):
                 messages.error(request, "Tarefa não encontrada.")
                 return redirect("/")
 
+            # RN-04: Tarefas concluídas não podem ser editadas
+            if task.status == TaskStatus.COMPLETED:
+                messages.error(request, "Tarefas concluídas não podem ser editadas.")
+                return redirect("/")
+
             # Extract form data
             title = request.POST.get("title", "").strip()
             description = request.POST.get("description", "").strip()
