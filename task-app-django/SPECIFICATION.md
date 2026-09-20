@@ -84,6 +84,18 @@ Refatoração completa do módulo de autenticação
 
 Os campos TEXT são armazenados como markdown puro no BD (até 65KB por campo).
 
+### 2.0.1 Formato de Datas (Due Date)
+
+A `due_date` (data de vencimento) é um campo **OPCIONAL** que usa o tipo `DATE` (sem hora):
+* **Formato:** `YYYY-MM-DD` (ex: `"2026-12-31"`)
+* **Armazenamento:** Tipo `DATE` no PostgreSQL (apenas data, sem componente de hora)
+* **Validação:**
+  - Quando fornecida, deve ser **posterior ao dia atual** (não aceita datas passadas nem a data de hoje)
+  - Campo vazio no formulário é equivalente a `null` no banco de dados
+  - Pode ser preenchida durante a criação ou atribuída posteriormente via edição
+* **Interface:** Input HTML `type="date"` no navegador (sem seletor de hora)
+* **Conversão:** O JavaScript converte automaticamente datas do banco para formato `YYYY-MM-DD` para exibição no formulário de edição
+
 ### 2.1 Modelo de Dados (DDL SQL)
 
 ```sql
@@ -136,7 +148,7 @@ CREATE TABLE tasks (
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- 'PENDING', 'IN_PROGRESS', 'COMPLETED'
     priority VARCHAR(10) NOT NULL DEFAULT 'MEDIUM', -- 'LOW', 'MEDIUM', 'HIGH'
     assignee_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    due_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    due_date DATE, -- Data de vencimento (opcional, formato YYYY-MM-DD)
     github_url VARCHAR(255), -- URL relativa a esta tarefa no GitHub (issue, PR, etc)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -236,11 +248,13 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Alterar status do contrato:** `POST /web/contracts/{contract_id}/status` (Campo: `status`, com valores `PROSPECTING`, `IN_PROGRESS` ou `SIGNED`). A interface web expõe apenas as transições válidas conforme a seção 2.3; transições inválidas são rejeitadas no domínio com erro `INVALID_STATUS_TRANSITION`.
 * **Alterar status do projeto:** `POST /web/projects/{project_id}/status` (Campo: `status`). A operação sincroniza o status das tarefas do projeto conforme as regras da seção 2.3.
 * **Gerenciar equipe do projeto:** `POST /web/projects/{project_id}/team` (Campos: `action` com `add` ou `remove`, e `user_id`).
-* **Cadastrar Tarefa:** `POST /web/tasks` (Campos: `project_id`, `title`, `description`, `priority`, `assignee_id`, `due_date`). Modal pré-seleciona o projeto se filtrado.
+* **Cadastrar Tarefa:** `POST /web/tasks` (Campos: `project_id`, `title`, `description`, `priority`, `assignee_id` [opcional], `due_date` [opcional, formato `YYYY-MM-DD`]). Modal pré-seleciona o projeto se filtrado. Campos opcionais podem ser deixados vazios e preenchidos posteriormente.
 * **Alterar Status:** `POST /web/tasks/{task_id}/status` (Campo: `status`). Disponível via botão *"Iniciar"*, *"Voltar"* ou *"Concluir"* nos cartões.
-* **Editar Tarefa:** `POST /web/tasks/{task_id}` (Campos opcionais: `title`, `description`, `priority`, `assignee_id`, `due_date`, `github_url`). 
+* **Editar Tarefa:** `POST /web/tasks/{task_id}` (Campos opcionais: `title`, `description`, `priority`, `assignee_id`, `due_date` [formato `YYYY-MM-DD`], `github_url`). 
   * Modal pré-preenchido com dados da tarefa através de `data-*` attributes
+  * JavaScript converte data do banco para formato `YYYY-MM-DD` para exibição no input type="date"
   * Suporta atualização parcial: apenas campos alterados são enviados
+  * Campos deixados vazios não são atualizados
   * Campos vazios são convertidos para `None` (não atualizam o BD)
   * **Botão (lápis) disponível em TODAS as tarefas** (PENDING, IN_PROGRESS, COMPLETED)
   * **Permite reabertura**: Tarefas COMPLETED podem voltar para PENDING ou IN_PROGRESS
