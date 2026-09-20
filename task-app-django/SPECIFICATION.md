@@ -144,13 +144,14 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * `SIGNED` (Assinados): Contrato Aprovado — estado final, exibido com badge "Assinado" e sem botões de transição.
   * **Equipes dos Projetos:** Cada projeto deve exibir seus membros e oferecer controles para adicionar ou remover usuários, sem permitir duplicidades.
   * **Quadro Kanban de Tarefas:** Dividido em 3 colunas de status:
-    * `PENDING` (Pendentes): Cartões com badge de prioridade, prazo e botão *"Iniciar"* para transição direta para `IN_PROGRESS`.
-    * `IN_PROGRESS` (Em Andamento): Cartões com botões *"Voltar"* (para `PENDING`) e *"Concluir"* (para `COMPLETED`).
-    * `COMPLETED` (Concluídas): Cartões arquivados, aplicando a **RN-04** (bloqueio de reabertura).
+    * `PENDING` (Pendentes): Cartões com badge de prioridade, prazo, botão *"Iniciar"* para transição direta para `IN_PROGRESS`, botão *"Editar"* (lápis) e botão *"Excluir"* (lixeira).
+    * `IN_PROGRESS` (Em Andamento): Cartões com botões *"Voltar"* (para `PENDING`) e *"Concluir"* (para `COMPLETED`), além de botões expandidos *"Editar"* e *"Excluir"*.
+    * `COMPLETED` (Concluídas): Cartões arquivados, aplicando a **RN-04** (bloqueio de reabertura), com botão *"Excluir"* para remover tarefas concluídas.
   * **Modais Interativos:**
     * Modal de Criação do Contrato.
     * Modal de Criação de Projeto.
     * Modal de Cadastro de Tarefa (com seleção de prioridade, projeto, responsável e data de vencimento).
+    * Modal de Edição de Tarefa (permite atualizar título, descrição, prioridade, responsável e data de vencimento; pré-preenchido com dados da tarefa selecionada).
     * Modal de Cadastro de Usuários (para membros da equipe).
 
 ### 3.2 Ações e Formulários Web
@@ -159,10 +160,10 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Alterar status do contrato:** `POST /web/contracts/{contract_id}/status` (Campo: `status`, com valores `PROSPECTING`, `IN_PROGRESS` ou `SIGNED`). A interface web expõe apenas as transições válidas conforme a seção 2.3; transições inválidas são rejeitadas no domínio com erro `INVALID_STATUS_TRANSITION`.
 * **Alterar status do projeto:** `POST /web/projects/{project_id}/status` (Campo: `status`). A operação sincroniza o status das tarefas do projeto conforme as regras da seção 2.3.
 * **Gerenciar equipe do projeto:** `POST /web/projects/{project_id}/team` (Campos: `action` com `add` ou `remove`, e `user_id`).
-* **Cadastrar Tarefa:** `POST /web/tasks` (Campos: `project_id`, `title`, `description`, `priority`, `assignee_id`, `due_date`).
-* **Alterar Status:** `POST /web/tasks/{task_id}/status` (Campo: `status`).
-* **Editar Tarefa:** `POST /web/tasks/{task_id}` (Campos opcionais: `title`, `description`, `priority`, `assignee_id`, `due_date`).
-* **Excluir Tarefa:** `POST /web/tasks/{task_id}/delete` (Sem campos).
+* **Cadastrar Tarefa:** `POST /web/tasks` (Campos: `project_id`, `title`, `description`, `priority`, `assignee_id`, `due_date`). Modal pré-seleciona o projeto se filtrado.
+* **Alterar Status:** `POST /web/tasks/{task_id}/status` (Campo: `status`). Disponível via botão *"Iniciar"*, *"Voltar"* ou *"Concluir"* nos cartões.
+* **Editar Tarefa:** `POST /web/tasks/{task_id}` (Campos opcionais: `title`, `description`, `priority`, `assignee_id`, `due_date`). Modal pré-preenchido com dados da tarefa, suporta atualização parcial. Botão (lápis) em tarefas PENDING e IN_PROGRESS. Confirmação dialoga antes de enviar.
+* **Excluir Tarefa:** `POST /web/tasks/{task_id}/delete` (Sem campos). Botão (lixeira) disponível em todas as tarefas. Exibe confirmação: *"Tem certeza que deseja excluir esta tarefa?"*.
 * **Cadastrar Usuário:** `POST /web/users` (Campos: `name`, `email`, `password`, `password_confirmation`, `role`).
 * **Entrar:** `POST /login` (Campos: `username` com o e-mail e `password`).
 * **Sair:** `GET /logout`.
