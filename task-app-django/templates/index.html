@@ -342,7 +342,7 @@
                             </button>
                             <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir tarefa" onclick="return confirm('Tem certeza que deseja excluir esta tarefa?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir tarefa">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
@@ -822,7 +822,53 @@
             });
         }
     });
+
+    // Handle delete task confirmation modal
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('form[action*="/delete"]')) {
+            const button = e.target.closest('button[type="submit"]');
+            if (button && button.closest('form[action*="/delete"]')) {
+                e.preventDefault();
+                const form = button.closest('form');
+                const taskTitle = button.closest('.card') ?
+                    button.closest('.card').querySelector('h5, h6')?.textContent.trim() :
+                    'Tarefa';
+
+                // Show confirmation modal
+                const modalEl = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+                document.getElementById('confirmDeleteBtn').onclick = function() {
+                    modalEl.hide();
+                    form.submit();
+                };
+                modalEl.show();
+            }
+        }
+    });
 </script>
+
+<!-- MODAL: CONFIRMAÇÃO DE EXCLUSÃO -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger bg-opacity-10 border-danger">
+                <h5 class="modal-title fw-bold text-danger" id="confirmDeleteLabel">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <p class="fs-5 mb-2">Tem certeza que deseja <strong>excluir esta tarefa</strong>?</p>
+                <p class="text-muted small mb-0">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer gap-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash me-1"></i>Excluir Tarefa
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- MODAL: NOVO USUÁRIO -->
 <div class="modal fade" id="modalUser" tabindex="-1" aria-labelledby="modalUserLabel" aria-hidden="true">
