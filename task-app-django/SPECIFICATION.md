@@ -27,7 +27,7 @@ O **TaskTrack** é uma aplicação FullStack com Django responsável pelo gerenc
 
 ## 2. Entidades e Dados
 
-### 2.0 Formato de Texto - Markdown Support
+### 2.0 Formato de Texto - Markdown Support com Campos Expandidos
 
 Todos os campos `TEXT` (descrições de contratos, projetos e tarefas) suportam **Markdown** para formatação de texto rico:
 - **Negrito**: `**texto**`
@@ -37,9 +37,50 @@ Todos os campos `TEXT` (descrições de contratos, projetos e tarefas) suportam 
 - Listas: `- Item 1`, `- Item 2`
 - Links: `[texto](url)`
 
-Exemplos de uso:
-- Descrição de tarefa: `**Requisito**: Implementar autenticação OAuth2 com validação de PKCE`
-- Descrição de projeto: `## Fase 1\n- [x] Prototipagem\n- [ ] Testes`
+#### Dimensões dos Campos de Descrição
+
+| Campo | Altura Mínima | Linhas | Redimensionável | Markdown |
+|-------|:---:|:---:|:---:|:---:|
+| Contrato (Descrição) | 400px | ~20 | ✅ Vertical | ✅ Sim |
+| Projeto (Descrição) | 400px | ~20 | ✅ Vertical | ✅ Sim |
+| Tarefa (Criar) | 400px | ~20 | ✅ Vertical | ✅ Sim |
+| Tarefa (Editar) | 400px | ~20 | ✅ Vertical | ✅ Sim |
+
+#### Exemplos de Uso
+
+Descrição de tarefa:
+```
+**Requisito**: Implementar autenticação OAuth2
+
+## Detalhes
+- Validar PKCE
+- Integrar com Google/GitHub
+- Suportar SAML 2.0
+
+## Aceitação
+- [x] Testes unitários
+- [x] Testes de integração
+- [ ] Testes de segurança
+
+## Referências
+- [Issue #42](https://github.com/...)
+- [RFC 6749](https://tools.ietf.org/html/rfc6749)
+```
+
+Descrição de projeto:
+```
+## Visão Geral
+Refatoração completa do módulo de autenticação
+
+## Escopo
+- Fase 1: Análise e design
+- Fase 2: Implementação
+- Fase 3: Testes
+
+## Riscos
+- Risco de compatibilidade com clientes legados
+- Impacto em performance durante transição
+```
 
 Os campos TEXT são armazenados como markdown puro no BD (até 65KB por campo).
 
@@ -176,10 +217,10 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * `IN_PROGRESS` (Em Andamento): Cartões com botões *"Voltar"* (para `PENDING`) e *"Concluir"* (para `COMPLETED`), além de botões expandidos *"Editar"* e *"Excluir"*.
     * `COMPLETED` (Concluídas): Cartões com badge de conclusão, rastreamento de histórico completo, botões *"Editar"* (para reabertura ou alteração de metadata) e *"Excluir"* (para remover).
   * **Modais Interativos:**
-    * Modal de Criação do Contrato (descrição com 5 linhas, suporta Markdown).
-    * Modal de Criação de Projeto (descrição com 5 linhas, suporta Markdown).
-    * Modal de Cadastro de Tarefa (descrição com 6 linhas, suporta Markdown, com seleção de prioridade, projeto, responsável e data de vencimento).
-    * Modal de Edição de Tarefa (permite atualizar todos os campos incluindo descrição em Markdown de 6 linhas, github_url; pré-preenchido com dados da tarefa selecionada).
+    * Modal de Criação do Contrato (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown).
+    * Modal de Criação de Projeto (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown).
+    * Modal de Cadastro de Tarefa (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown, com seleção de prioridade, projeto, responsável e data de vencimento).
+    * Modal de Edição de Tarefa (permite atualizar todos os campos incluindo descrição em Markdown com 400px min-height = ~20 linhas, redimensionável, github_url; pré-preenchido com dados da tarefa selecionada).
     * Modal de Cadastro de Usuários (para membros da equipe).
 
 ### 3.2 Ações e Formulários Web
@@ -386,7 +427,8 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   * Armazenamento: Markdown puro (até 65KB por campo)
   * Suporte: **negrito**, *itálico*, `código`, títulos, listas, links
   * Renderização: Cliente responsável por renderizar Markdown em exibição (se necessário)
-  * UI: Campos textarea aumentados (4-6 linhas) com dicas de formatação
+  * UI: Campos textarea expandidos com `min-height: 400px` (~20 linhas) | Redimensionáveis verticalmente | Dicas de formatação
+  * Experiência: Editor tem ampla visão das descrições para documenta completamente (contratos, projetos, tarefas)
 
 ### 5.2 Casos de Borda (CB)
 * **CB-01 (Projeto Inexistente):** Tentar criar uma tarefa enviando um `project_id` inexistente deve retornar `404 Not Found` com mensagem `"Projeto não encontrado"`.
