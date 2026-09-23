@@ -38,6 +38,21 @@ class CreateContractSchema(BaseModel):
         return v.strip()
 
 
+class UpdateContractSchema(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=120)
+    description: Optional[str] = None
+    owner_id: Optional[UUID] = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_contract_title_not_blank(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not v.strip():
+            raise ValueError("O título não pode ser composto apenas por espaços em branco.")
+        return v.strip()
+
+
 class UpdateContractStatusSchema(BaseModel):
     status: ContractStatus
 
@@ -55,6 +70,21 @@ class CreateProjectSchema(BaseModel):
     @field_validator("title")
     @classmethod
     def validate_title_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("O título não pode ser composto apenas por espaços em branco.")
+        return v.strip()
+
+
+class UpdateProjectSchema(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=120)
+    description: Optional[str] = None
+    owner_id: Optional[UUID] = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_title_not_blank(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
         if not v.strip():
             raise ValueError("O título não pode ser composto apenas por espaços em branco.")
         return v.strip()

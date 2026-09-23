@@ -24,7 +24,9 @@ from ..schemas.schemas import (
     CreateProjectSchema,
     CreateRequirementSchema,
     CreateTaskSchema,
+    UpdateContractSchema,
     UpdateContractStatusSchema,
+    UpdateProjectSchema,
     UpdateProjectStatusSchema,
     UpdateRequirementSchema,
     UpdateRequirementStatusSchema,
@@ -112,6 +114,40 @@ class UpdateContractStatusUseCase:
         return self.contract_repo.save(contract)
 
 
+class UpdateContractUseCase:
+    def __init__(self, contract_repo: IContractRepository, user_repo: IUserRepository):
+        self.contract_repo = contract_repo
+        self.user_repo = user_repo
+
+    def execute(self, contract_id: UUID, dto: UpdateContractSchema) -> Contract:
+        contract = self.contract_repo.get_by_id(contract_id)
+        if not contract:
+            raise ContractNotFoundError()
+
+        if dto.title is not None:
+            contract.title = dto.title
+        if dto.description is not None:
+            contract.description = dto.description
+        if dto.owner_id is not None:
+            owner = self.user_repo.get_by_id(dto.owner_id)
+            if not owner:
+                raise UserNotFoundError("Usuário proprietário não encontrado.")
+            contract.owner_id = dto.owner_id
+
+        return self.contract_repo.save(contract)
+
+
+class DeleteContractUseCase:
+    def __init__(self, contract_repo: IContractRepository):
+        self.contract_repo = contract_repo
+
+    def execute(self, contract_id: UUID) -> None:
+        contract = self.contract_repo.get_by_id(contract_id)
+        if not contract:
+            raise ContractNotFoundError()
+        self.contract_repo.delete(contract_id)
+
+
 class UpdateProjectStatusUseCase:
     def __init__(self, project_repo: IProjectRepository, task_repo: ITaskRepository):
         self.project_repo = project_repo
@@ -146,6 +182,40 @@ class UpdateProjectStatusUseCase:
         for task in tasks:
             self.task_repo.save(task)
         return tasks
+
+
+class UpdateProjectUseCase:
+    def __init__(self, project_repo: IProjectRepository, user_repo: IUserRepository):
+        self.project_repo = project_repo
+        self.user_repo = user_repo
+
+    def execute(self, project_id: UUID, dto: UpdateProjectSchema) -> Project:
+        project = self.project_repo.get_by_id(project_id)
+        if not project:
+            raise ProjectNotFoundError("Projeto não encontrado")
+
+        if dto.title is not None:
+            project.title = dto.title
+        if dto.description is not None:
+            project.description = dto.description
+        if dto.owner_id is not None:
+            owner = self.user_repo.get_by_id(dto.owner_id)
+            if not owner:
+                raise UserNotFoundError("Usuário proprietário não encontrado.")
+            project.owner_id = dto.owner_id
+
+        return self.project_repo.save(project)
+
+
+class DeleteProjectUseCase:
+    def __init__(self, project_repo: IProjectRepository):
+        self.project_repo = project_repo
+
+    def execute(self, project_id: UUID) -> None:
+        project = self.project_repo.get_by_id(project_id)
+        if not project:
+            raise ProjectNotFoundError("Projeto não encontrado")
+        self.project_repo.delete(project_id)
 
 
 class CreateTaskUseCase:

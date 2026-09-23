@@ -256,14 +256,17 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * `PROSPECTING` (Prospecção): Cartões com título, descrição, proprietário, download do arquivo (quando existir) e botão *"Iniciar"* para transição direta para `IN_PROGRESS`.
     * `IN_PROGRESS` (Em Andamento): Contrato em Assinatura com botões *"Voltar"* (para `PROSPECTING`) e *"Concluir"* (para `SIGNED`).
     * `SIGNED` (Assinados): Contrato Aprovado — estado final, exibido com badge "Assinado" e sem botões de transição.
-  * **Equipes dos Projetos:** Cada projeto deve exibir seus membros e oferecer controles para adicionar ou remover usuários, sem permitir duplicidades.
+    * Todos os cartões, independente da coluna/status, exibem botões *"Editar"* (lápis) e *"Excluir"* (lixeira).
+  * **Equipes dos Projetos:** Cada projeto deve exibir seus membros e oferecer controles para adicionar ou remover usuários, sem permitir duplicidades. A tabela de projetos também exibe botões *"Editar"* (lápis) e *"Excluir"* (lixeira) por projeto.
   * **Quadro Kanban de Tarefas:** Dividido em 3 colunas de status:
     * `PENDING` (Pendentes): Cartões com badge de prioridade, prazo, botão *"Iniciar"* para transição direta para `IN_PROGRESS`, botão *"Editar"* (lápis) e botão *"Excluir"* (lixeira).
     * `IN_PROGRESS` (Em Andamento): Cartões com botões *"Voltar"* (para `PENDING`) e *"Concluir"* (para `COMPLETED`), além de botões expandidos *"Editar"* e *"Excluir"*.
     * `COMPLETED` (Concluídas): Cartões com badge de conclusão, rastreamento de histórico completo, botões *"Editar"* (para reabertura ou alteração de metadata) e *"Excluir"* (para remover).
   * **Modais Interativos:**
     * Modal de Criação do Contrato (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown).
+    * Modal de Edição de Contrato (título, descrição em Markdown e proprietário; pré-preenchido com dados do contrato selecionado; `contract_file` e `status` não são editáveis por este modal).
     * Modal de Criação de Projeto (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown).
+    * Modal de Edição de Projeto (título, descrição em Markdown e proprietário; pré-preenchido com dados do projeto selecionado; `contract_id` não é editável).
     * Modal de Cadastro de Tarefa (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown, com seleção de prioridade, projeto, responsável e data de vencimento).
     * Modal de Edição de Tarefa (permite atualizar todos os campos incluindo descrição em Markdown com 400px min-height = ~20 linhas, redimensionável, github_url; pré-preenchido com dados da tarefa selecionada).
     * Modal de Cadastro de Usuários (para membros da equipe).
@@ -279,8 +282,28 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   * Erro: 404 se arquivo não existir
 
 * **Alterar status do contrato:** `POST /web/contracts/{contract_id}/status` (Campo: `status`, com valores `PROSPECTING`, `IN_PROGRESS` ou `SIGNED`). A interface web expõe apenas as transições válidas conforme a seção 2.3; transições inválidas são rejeitadas no domínio com erro `INVALID_STATUS_TRANSITION`.
+* **Editar Contrato:** `POST /web/contracts/{contract_id}` (Campos opcionais: `title`, `description`, `owner_id` — atualização parcial, igual à edição de tarefa: campos deixados vazios não são alterados).
+  * Botão (lápis) disponível em contratos de qualquer status (`PROSPECTING`, `IN_PROGRESS`, `SIGNED`)
+  * Modal pré-preenchido com dados do contrato através de `data-*` attributes
+  * `contract_file` e `status` não são editáveis por este formulário (arquivo é definido na criação; status é alterado pelo fluxo de transição da seção 3.2)
+  * Validação no servidor: título não pode ser vazio, `owner_id` deve existir
+* **Excluir Contrato:** `POST /web/contracts/{contract_id}/delete` (Sem campos).
+  * Botão (lixeira) disponível em contratos de qualquer status
+  * Exibe modal de confirmação alertando que **projetos e tarefas vinculados também serão excluídos** (exclusão em cascata via FK `ON DELETE CASCADE`: `projects.contract_id` → `contracts.id`, `tasks.project_id` → `projects.id`)
+  * Exclusão permanente e irreversível
+  * Responde com redirecionamento para `/` e mensagem de sucesso
 * **Alterar status do projeto:** `POST /web/projects/{project_id}/status` (Campo: `status`). A operação sincroniza o status das tarefas do projeto conforme as regras da seção 2.3.
 * **Gerenciar equipe do projeto:** `POST /web/projects/{project_id}/team` (Campos: `action` com `add` ou `remove`, e `user_id`).
+* **Editar Projeto:** `POST /web/projects/{project_id}` (Campos opcionais: `title`, `description`, `owner_id` — atualização parcial, igual à edição de tarefa).
+  * Botão (lápis) na tabela de "Status dos Projetos", disponível independente do status
+  * Modal pré-preenchido com dados do projeto através de `data-*` attributes
+  * `contract_id` não é editável (vínculo definido na criação do projeto)
+  * Validação no servidor: título não pode ser vazio, `owner_id` deve existir
+* **Excluir Projeto:** `POST /web/projects/{project_id}/delete` (Sem campos).
+  * Botão (lixeira) na tabela de "Status dos Projetos"
+  * Exibe modal de confirmação alertando que **as tarefas vinculadas também serão excluídas** (exclusão em cascata via FK `tasks.project_id` → `projects.id`)
+  * Exclusão permanente e irreversível
+  * Responde com redirecionamento para `/` e mensagem de sucesso
 * **Cadastrar Tarefa:** `POST /web/tasks` (Campos: `project_id`, `title`, `description`, `priority`, `assignee_id` [opcional], `due_date` [opcional, formato `YYYY-MM-DD`]). Modal pré-seleciona o projeto se filtrado. Campos opcionais podem ser deixados vazios e preenchidos posteriormente.
 * **Alterar Status:** `POST /web/tasks/{task_id}/status` (Campo: `status`). Disponível via botão *"Iniciar"*, *"Voltar"* ou *"Concluir"* nos cartões.
 * **Editar Tarefa:** `POST /web/tasks/{task_id}` (Campos opcionais: `title`, `description`, `priority`, `assignee_id`, `due_date` [formato `YYYY-MM-DD`], `github_url`). 
@@ -345,6 +368,33 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   * `400 Bad Request`: Usuário proprietário não encontrado.
   * `422 Unprocessable Entity`: Dados de entrada inválidos.
 
+### 4.1a Editar Contrato
+* **Endpoint:** `PUT /api/v1/contracts/{contract_id}` ou `PATCH /api/v1/contracts/{contract_id}`
+* **Descrição:** Atualiza título, descrição e/ou proprietário de um contrato existente. `contract_file` e `status` não são alterados por este endpoint.
+* **Path Parameter:** `contract_id` (UUID)
+* **Request Body (todos os campos opcionais):**
+```json
+{
+  "title": "Novo título do contrato",
+  "description": "Nova descrição.",
+  "owner_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
+}
+```
+* **Respostas:**
+  * `200 OK`: Retorna o objeto completo do contrato atualizado.
+  * `404 Not Found`: Contrato não encontrado.
+  * `422 Unprocessable Entity`: Dados de entrada inválidos (ex: título vazio).
+
+### 4.1b Excluir Contrato
+* **Endpoint:** `DELETE /api/v1/contracts/{contract_id}`
+* **Descrição:** Remove um contrato do sistema de forma permanente. Exclui em cascata todos os projetos e tarefas vinculados (FK `ON DELETE CASCADE`).
+* **Path Parameter:** `contract_id` (UUID)
+* **Respostas:**
+  * `204 No Content`: Contrato excluído com sucesso.
+  * `404 Not Found`: Contrato não encontrado.
+
+---
+
 ### 4.2 Criar Projeto
 * **Endpoint:** `POST /api/v1/projects`
 * **Descrição:** Cria um novo projeto no sistema.
@@ -372,6 +422,31 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 ```
   * `400 Bad Request`: Usuário proprietário ou contrato não encontrado.
   * `422 Unprocessable Entity`: Dados de entrada inválidos.
+
+### 4.2a Editar Projeto
+* **Endpoint:** `PUT /api/v1/projects/{project_id}` ou `PATCH /api/v1/projects/{project_id}`
+* **Descrição:** Atualiza título, descrição e/ou proprietário de um projeto existente. `contract_id` não é alterado por este endpoint.
+* **Path Parameter:** `project_id` (UUID)
+* **Request Body (todos os campos opcionais):**
+```json
+{
+  "title": "Novo título do projeto",
+  "description": "Nova descrição.",
+  "owner_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
+}
+```
+* **Respostas:**
+  * `200 OK`: Retorna o objeto completo do projeto atualizado.
+  * `404 Not Found`: Projeto não encontrado.
+  * `422 Unprocessable Entity`: Dados de entrada inválidos (ex: título vazio).
+
+### 4.2b Excluir Projeto
+* **Endpoint:** `DELETE /api/v1/projects/{project_id}`
+* **Descrição:** Remove um projeto do sistema de forma permanente. Exclui em cascata todas as tarefas vinculadas (FK `ON DELETE CASCADE`).
+* **Path Parameter:** `project_id` (UUID)
+* **Respostas:**
+  * `204 No Content`: Projeto excluído com sucesso.
+  * `404 Not Found`: Projeto não encontrado.
 
 ---
 
@@ -533,8 +608,12 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **CB-06 (Edição de Tarefa Inexistente):** Tentar editar uma tarefa com `task_id` inexistente deve retornar `404 Not Found` com mensagem `"Tarefa não encontrada"`.
 * **CB-07 (Exclusão de Tarefa Inexistente):** Tentar excluir uma tarefa com `task_id` inexistente deve retornar `404 Not Found` com mensagem `"Tarefa não encontrada"`.
 * **CB-08 (Edição de Tarefa com Vencimento já Vencido):** Editar via web (`POST /web/tasks/{task_id}`) qualquer campo (ex.: `title`) de uma tarefa cuja `due_date` já é hoje ou passada, reenviando essa mesma `due_date` inalterada (comportamento do formulário, que pré-preenche o campo), deve ser aceito normalmente (`302` redirect + mensagem de sucesso), sem disparar o erro de RN-02, pois o valor não mudou.
-* **CB-08 (Código de Requisito Duplicado):** Tentar criar ou editar um requisito para um `code` já usado por outro requisito deve retornar `400 Bad Request`.
-* **CB-09 (Vínculo com Requisito ou Tarefa Inexistente):** Tentar vincular/desvincular uma tarefa a um `requirement_id` inexistente, ou uma tarefa com `task_id` inexistente, deve retornar `404 Not Found`.
+* **CB-09 (Código de Requisito Duplicado):** Tentar criar ou editar um requisito para um `code` já usado por outro requisito deve retornar `400 Bad Request`.
+* **CB-10 (Vínculo com Requisito ou Tarefa Inexistente):** Tentar vincular/desvincular uma tarefa a um `requirement_id` inexistente, ou uma tarefa com `task_id` inexistente, deve retornar `404 Not Found`.
+* **CB-11 (Edição/Exclusão de Contrato Inexistente):** Tentar editar (`PUT`/`PATCH`/`POST /web/contracts/{id}`) ou excluir (`DELETE`/`POST /web/contracts/{id}/delete`) um contrato com `contract_id` inexistente deve retornar `404 Not Found` (API) ou redirecionar com mensagem de erro (web), sem erro 500.
+* **CB-12 (Edição/Exclusão de Projeto Inexistente):** Tentar editar ou excluir um projeto com `project_id` inexistente deve retornar `404 Not Found` (API) ou redirecionar com mensagem de erro (web), sem erro 500.
+* **CB-13 (Exclusão em Cascata do Contrato):** Excluir um contrato remove automaticamente (via FK `ON DELETE CASCADE`) todos os projetos vinculados a ele e, transitivamente, todas as tarefas desses projetos.
+* **CB-14 (Exclusão em Cascata do Projeto):** Excluir um projeto remove automaticamente (via FK `ON DELETE CASCADE`) todas as tarefas vinculadas a ele, sem afetar o contrato ao qual o projeto pertence.
 
 ---
 

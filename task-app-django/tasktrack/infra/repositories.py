@@ -112,6 +112,9 @@ class DjangoContractRepository(IContractRepository):
         contract.created_at = orm_contract.created_at
         return contract
 
+    def delete(self, contract_id: UUID) -> None:
+        ContractModel.objects.filter(id=contract_id).delete()
+
 
 class DjangoProjectRepository(IProjectRepository):
     def get_by_id(self, project_id: UUID) -> Optional[Project]:
@@ -171,6 +174,9 @@ class DjangoProjectRepository(IProjectRepository):
 
     def remove_team_member(self, project_id: UUID, user_id: UUID) -> None:
         ProjectMembershipModel.objects.filter(project_id=project_id, user_id=user_id).delete()
+
+    def delete(self, project_id: UUID) -> None:
+        ProjectModel.objects.filter(id=project_id).delete()
 
 
 class DjangoTaskRepository(ITaskRepository):

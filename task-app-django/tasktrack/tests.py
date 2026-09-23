@@ -411,6 +411,107 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
 
+    def test_web_update_contract_success(self):
+        """Web: POST /web/contracts/{id} edita título, descrição e proprietário."""
+        other_owner = self.user_repo.save(User(name="Outro Dono", email="outro@tasktrack.com", role=UserRole.MANAGER))
+        response = self.client.post(
+            f"/web/contracts/{self.contract.id}",
+            {"title": "Contrato Renomeado", "description": "Nova descrição", "owner_id": str(other_owner.id)},
+        )
+        self.assertEqual(response.status_code, 302)
+        updated = self.contract_repo.get_by_id(self.contract.id)
+        self.assertEqual(updated.title, "Contrato Renomeado")
+        self.assertEqual(updated.description, "Nova descrição")
+        self.assertEqual(updated.owner_id, other_owner.id)
+
+    def test_web_update_contract_not_found(self):
+        """Web: editar contrato inexistente não gera erro 500."""
+        response = self.client.post(
+            f"/web/contracts/{uuid.uuid4()}",
+            {"title": "Não existe"},
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_web_delete_contract_cascades_projects_and_tasks(self):
+        """Web: excluir contrato remove em cascata projetos e tarefas vinculados (FK CASCADE)."""
+        response = self.client.post(f"/web/contracts/{self.contract.id}/delete")
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNone(self.contract_repo.get_by_id(self.contract.id))
+        self.assertIsNone(self.project_repo.get_by_id(self.project.id))
+        self.assertIsNone(self.task_repo.get_by_id(self.task.id))
+
+    def test_web_delete_contract_not_found(self):
+        """Web: excluir contrato inexistente não gera erro 500."""
+        response = self.client.post(f"/web/contracts/{uuid.uuid4()}/delete")
+        self.assertEqual(response.status_code, 302)
+
+    def test_web_update_project_success(self):
+        """Web: POST /web/projects/{id} edita título, descrição e proprietário."""
+        other_owner = self.user_repo.save(User(name="Outro Dono 2", email="outro2@tasktrack.com", role=UserRole.MANAGER))
+        response = self.client.post(
+            f"/web/projects/{self.project.id}",
+            {"title": "Projeto Renomeado", "description": "Nova descrição", "owner_id": str(other_owner.id)},
+        )
+        self.assertEqual(response.status_code, 302)
+        updated = self.project_repo.get_by_id(self.project.id)
+        self.assertEqual(updated.title, "Projeto Renomeado")
+        self.assertEqual(updated.description, "Nova descrição")
+        self.assertEqual(updated.owner_id, other_owner.id)
+
+    def test_web_update_project_not_found(self):
+        """Web: editar projeto inexistente não gera erro 500."""
+        response = self.client.post(
+            f"/web/projects/{uuid.uuid4()}",
+            {"title": "Não existe"},
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_web_delete_project_cascades_tasks(self):
+        """Web: excluir projeto remove em cascata as tarefas vinculadas (FK CASCADE)."""
+        response = self.client.post(f"/web/projects/{self.project.id}/delete")
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNone(self.project_repo.get_by_id(self.project.id))
+        self.assertIsNone(self.task_repo.get_by_id(self.task.id))
+        self.assertIsNotNone(self.contract_repo.get_by_id(self.contract.id))
+
+    def test_web_delete_project_not_found(self):
+        """Web: excluir projeto inexistente não gera erro 500."""
+        response = self.client.post(f"/web/projects/{uuid.uuid4()}/delete")
+        self.assertEqual(response.status_code, 302)
+
+    def test_api_update_contract_endpoint(self):
+        """API: PATCH /api/v1/contracts/{id} atualiza campos parciais."""
+        response = self.client.patch(
+            f"/api/v1/contracts/{self.contract.id}",
+            data={"title": "Contrato via API"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["title"], "Contrato via API")
+
+    def test_api_delete_contract_endpoint(self):
+        """API: DELETE /api/v1/contracts/{id} exclui o contrato (e cascata)."""
+        response = self.client.delete(f"/api/v1/contracts/{self.contract.id}")
+        self.assertEqual(response.status_code, 204)
+        self.assertIsNone(self.contract_repo.get_by_id(self.contract.id))
+
+    def test_api_update_project_endpoint(self):
+        """API: PATCH /api/v1/projects/{id} atualiza campos parciais."""
+        response = self.client.patch(
+            f"/api/v1/projects/{self.project.id}",
+            data={"title": "Projeto via API"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["title"], "Projeto via API")
+
+    def test_api_delete_project_endpoint(self):
+        """API: DELETE /api/v1/projects/{id} exclui o projeto (e cascata)."""
+        response = self.client.delete(f"/api/v1/projects/{self.project.id}")
+        self.assertEqual(response.status_code, 204)
+        self.assertIsNone(self.project_repo.get_by_id(self.project.id))
+        self.assertIsNone(self.task_repo.get_by_id(self.task.id))
+
     # -------------------------------------------------------------
     # REQUIREMENTS (Gestão de Requisitos)
     # -------------------------------------------------------------

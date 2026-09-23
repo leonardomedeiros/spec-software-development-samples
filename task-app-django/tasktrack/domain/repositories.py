@@ -43,6 +43,10 @@ class IProjectRepository(ABC):
     def remove_team_member(self, project_id: UUID, user_id: UUID) -> None:
         pass
 
+    @abstractmethod
+    def delete(self, project_id: UUID) -> None:
+        pass
+
 
 class IContractRepository(ABC):
     @abstractmethod
@@ -55,6 +59,10 @@ class IContractRepository(ABC):
 
     @abstractmethod
     def save(self, contract: Contract) -> Contract:
+        pass
+
+    @abstractmethod
+    def delete(self, contract_id: UUID) -> None:
         pass
 
 

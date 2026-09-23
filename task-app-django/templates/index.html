@@ -132,13 +132,24 @@
                                         </a>
                                     {% endif %}
                                     <hr class="my-2 text-muted">
-                                    <form method="POST" action="/web/contracts/{{ c.id }}/status">
+                                    <form method="POST" action="/web/contracts/{{ c.id }}/status" class="mb-2">
                                         {% csrf_token %}
                                         <input type="hidden" name="status" value="IN_PROGRESS">
                                         <button type="submit" class="btn btn-sm btn-outline-primary w-100">
                                             Iniciar <i class="bi bi-arrow-right ms-1"></i>
                                         </button>
                                     </form>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditContract" data-contract-id="{{ c.id }}" data-contract-title="{{ c.title|escapejs }}" data-contract-description="{{ c.description|escapejs }}" data-contract-owner="{{ c.owner_id }}" title="Editar contrato">
+                                            <i class="bi bi-pencil me-1"></i> Editar
+                                        </button>
+                                        <form method="POST" action="/web/contracts/{{ c.id }}/delete" class="flex-grow-1" data-entity-type="contrato" data-entity-warning="Todos os projetos e tarefas vinculados a este contrato também serão excluídos.">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir contrato">
+                                                <i class="bi bi-trash me-1"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         {% empty %}
@@ -167,7 +178,7 @@
                                         </a>
                                     {% endif %}
                                     <hr class="my-2 text-muted">
-                                    <div class="d-flex gap-2">
+                                    <div class="d-flex gap-2 mb-2">
                                         <form method="POST" action="/web/contracts/{{ c.id }}/status" class="w-50">
                                             {% csrf_token %}
                                             <input type="hidden" name="status" value="PROSPECTING">
@@ -180,6 +191,17 @@
                                             <input type="hidden" name="status" value="SIGNED">
                                             <button type="submit" class="btn btn-sm btn-success w-100">
                                                 Concluir <i class="bi bi-check2 ms-1"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditContract" data-contract-id="{{ c.id }}" data-contract-title="{{ c.title|escapejs }}" data-contract-description="{{ c.description|escapejs }}" data-contract-owner="{{ c.owner_id }}" title="Editar contrato">
+                                            <i class="bi bi-pencil me-1"></i> Editar
+                                        </button>
+                                        <form method="POST" action="/web/contracts/{{ c.id }}/delete" class="flex-grow-1" data-entity-type="contrato" data-entity-warning="Todos os projetos e tarefas vinculados a este contrato também serão excluídos.">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir contrato">
+                                                <i class="bi bi-trash me-1"></i> Excluir
                                             </button>
                                         </form>
                                     </div>
@@ -211,7 +233,18 @@
                                         </a>
                                     {% endif %}
                                     <hr class="my-2 text-muted">
-                                    <span class="badge bg-success"><i class="bi bi-check2-all me-1"></i>Assinado</span>
+                                    <span class="badge bg-success mb-2"><i class="bi bi-check2-all me-1"></i>Assinado</span>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditContract" data-contract-id="{{ c.id }}" data-contract-title="{{ c.title|escapejs }}" data-contract-description="{{ c.description|escapejs }}" data-contract-owner="{{ c.owner_id }}" title="Editar contrato">
+                                            <i class="bi bi-pencil me-1"></i> Editar
+                                        </button>
+                                        <form method="POST" action="/web/contracts/{{ c.id }}/delete" class="flex-grow-1" data-entity-type="contrato" data-entity-warning="Todos os projetos e tarefas vinculados a este contrato também serão excluídos.">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir contrato">
+                                                <i class="bi bi-trash me-1"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         {% empty %}
@@ -243,6 +276,7 @@
                             <th>Descrição</th>
                             <th>Status</th>
                             <th>Equipe</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -298,6 +332,19 @@
                                             <i class="bi bi-person-plus"></i>
                                         </button>
                                     </form>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditProject" data-project-id="{{ project.id }}" data-project-title="{{ project.title|escapejs }}" data-project-description="{{ project.description|escapejs }}" data-project-owner="{{ project.owner_id }}" title="Editar projeto">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <form method="POST" action="/web/projects/{{ project.id }}/delete" class="d-inline" data-entity-type="projeto" data-entity-warning="Todas as tarefas vinculadas a este projeto também serão excluídas.">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir projeto">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -397,7 +444,7 @@
                                         <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditRequirement" data-req-id="{{ req.id }}" data-req-code="{{ req.code }}" data-req-title="{{ req.title|escapejs }}" data-req-description="{{ req.description|escapejs }}" data-req-type="{{ req.type.value }}" data-req-priority="{{ req.priority.value }}" title="Editar requisito">
                                             <i class="bi bi-pencil"></i>
                                         </button>
-                                        <form method="POST" action="/web/requirements/{{ req.id }}/delete" class="d-inline">
+                                        <form method="POST" action="/web/requirements/{{ req.id }}/delete" class="d-inline" data-entity-type="requisito">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir requisito">
                                                 <i class="bi bi-trash"></i>
@@ -444,21 +491,21 @@
                             {% endif %}
                         </div>
                         <hr class="my-2 text-muted">
-                        <div class="d-flex gap-2">
-                            <form method="POST" action="/web/tasks/{{ task.id }}/status" class="flex-grow-1">
-                                {% csrf_token %}
-                                <input type="hidden" name="status" value="IN_PROGRESS">
-                                <button type="submit" class="btn btn-sm btn-outline-primary w-100">
-                                    Iniciar <i class="bi bi-arrow-right ms-1"></i>
-                                </button>
-                            </form>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-d' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
-                                <i class="bi bi-pencil"></i>
+                        <form method="POST" action="/web/tasks/{{ task.id }}/status" class="mb-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="status" value="IN_PROGRESS">
+                            <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                                Iniciar <i class="bi bi-arrow-right ms-1"></i>
                             </button>
-                            <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="d-inline">
+                        </form>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-d' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
+                                <i class="bi bi-pencil me-1"></i> Editar
+                            </button>
+                            <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1" data-entity-type="tarefa">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir tarefa">
-                                    <i class="bi bi-trash"></i>
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir tarefa">
+                                    <i class="bi bi-trash me-1"></i> Excluir
                                 </button>
                             </form>
                         </div>
@@ -516,7 +563,7 @@
                             <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-d' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
                                 <i class="bi bi-pencil me-1"></i> Editar
                             </button>
-                            <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1">
+                            <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1" data-entity-type="tarefa">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir tarefa" >
                                     <i class="bi bi-trash me-1"></i> Excluir
@@ -561,7 +608,7 @@
                             <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-d' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
                                 <i class="bi bi-pencil me-1"></i> Editar
                             </button>
-                            <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1">
+                            <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1" data-entity-type="tarefa">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir tarefa" >
                                     <i class="bi bi-trash me-1"></i> Excluir
@@ -839,6 +886,80 @@
     </div>
 </div>
 
+<!-- MODAL: EDITAR CONTRATO -->
+<div class="modal fade" id="modalEditContract" tabindex="-1" aria-labelledby="modalEditContractLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" id="formEditContract" action="">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalEditContractLabel"><i class="bi bi-pencil me-2"></i>Editar Contrato</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título</label>
+                        <input type="text" name="title" id="editContractTitle" class="form-control" minlength="1" maxlength="120">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição (Suporta Markdown)</label>
+                        <textarea name="description" id="editContractDescription" class="form-control" style="min-height: 200px; resize: vertical;"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Proprietário</label>
+                        <select name="owner_id" id="editContractOwner" class="form-select">
+                            {% for user in users %}
+                                <option value="{{ user.id }}">{{ user.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: EDITAR PROJETO -->
+<div class="modal fade" id="modalEditProject" tabindex="-1" aria-labelledby="modalEditProjectLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" id="formEditProject" action="">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalEditProjectLabel"><i class="bi bi-pencil me-2"></i>Editar Projeto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título</label>
+                        <input type="text" name="title" id="editProjectTitle" class="form-control" minlength="1" maxlength="120">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição (Suporta Markdown)</label>
+                        <textarea name="description" id="editProjectDescription" class="form-control" style="min-height: 200px; resize: vertical;"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Proprietário</label>
+                        <select name="owner_id" id="editProjectOwner" class="form-select">
+                            {% for user in users %}
+                                <option value="{{ user.id }}">{{ user.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- MODAL: EDITAR TAREFA -->
 <div class="modal fade" id="modalEditTask" tabindex="-1" aria-labelledby="modalEditTaskLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -1072,16 +1193,59 @@
         }
     });
 
-    // Handle delete task confirmation modal
+    // Handle edit contract modal prefill
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalEditContract = document.getElementById('modalEditContract');
+        const formEditContract = document.getElementById('formEditContract');
+        if (modalEditContract && formEditContract) {
+            modalEditContract.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                if (!button) return;
+
+                const contractId = button.getAttribute('data-contract-id');
+                document.getElementById('editContractTitle').value = button.getAttribute('data-contract-title') || '';
+                document.getElementById('editContractDescription').value = button.getAttribute('data-contract-description') || '';
+                document.getElementById('editContractOwner').value = button.getAttribute('data-contract-owner') || '';
+
+                formEditContract.action = `/web/contracts/${contractId}`;
+            });
+        }
+    });
+
+    // Handle edit project modal prefill
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalEditProject = document.getElementById('modalEditProject');
+        const formEditProject = document.getElementById('formEditProject');
+        if (modalEditProject && formEditProject) {
+            modalEditProject.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                if (!button) return;
+
+                const projectId = button.getAttribute('data-project-id');
+                document.getElementById('editProjectTitle').value = button.getAttribute('data-project-title') || '';
+                document.getElementById('editProjectDescription').value = button.getAttribute('data-project-description') || '';
+                document.getElementById('editProjectOwner').value = button.getAttribute('data-project-owner') || '';
+
+                formEditProject.action = `/web/projects/${projectId}`;
+            });
+        }
+    });
+
+    // Handle delete confirmation modal (tasks, requirements, contracts, projects)
     document.addEventListener('click', function(e) {
         if (e.target.closest('form[action*="/delete"]')) {
             const button = e.target.closest('button[type="submit"]');
             if (button && button.closest('form[action*="/delete"]')) {
                 e.preventDefault();
                 const form = button.closest('form');
-                const taskTitle = button.closest('.card') ?
-                    button.closest('.card').querySelector('h5, h6')?.textContent.trim() :
-                    'Tarefa';
+                const entityType = form.getAttribute('data-entity-type') || 'tarefa';
+                const entityWarning = form.getAttribute('data-entity-warning') || '';
+
+                const warningEl = document.getElementById('confirmDeleteWarning');
+                warningEl.textContent = entityWarning;
+                warningEl.hidden = !entityWarning;
+                document.getElementById('confirmDeleteEntityLabel').textContent = `excluir este(a) ${entityType}`;
+                document.getElementById('confirmDeleteBtnLabel').textContent = `Excluir ${entityType.charAt(0).toUpperCase()}${entityType.slice(1)}`;
 
                 // Show confirmation modal
                 const modalEl = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
@@ -1107,13 +1271,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-center py-4">
-                <p class="fs-5 mb-2">Tem certeza que deseja <strong>excluir esta tarefa</strong>?</p>
+                <p class="fs-5 mb-2">Tem certeza que deseja <strong id="confirmDeleteEntityLabel">excluir esta tarefa</strong>?</p>
+                <p id="confirmDeleteWarning" class="text-warning small mb-2" hidden></p>
                 <p class="text-muted small mb-0">Esta ação não pode ser desfeita.</p>
             </div>
             <div class="modal-footer gap-2">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-                    <i class="bi bi-trash me-1"></i>Excluir Tarefa
+                    <i class="bi bi-trash me-1"></i><span id="confirmDeleteBtnLabel">Excluir Tarefa</span>
                 </button>
             </div>
         </div>

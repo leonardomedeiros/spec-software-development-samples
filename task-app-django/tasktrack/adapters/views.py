@@ -27,6 +27,7 @@ from ..domain.enums import (
     UserRole,
 )
 from ..domain.exceptions import (
+    ContractNotFoundError,
     DomainError,
     InvalidStatusTransitionError,
     ProjectNotFoundError,
@@ -50,7 +51,9 @@ from ..schemas.schemas import (
     ProjectResponseSchema,
     RequirementResponseSchema,
     TaskResponseSchema,
+    UpdateContractSchema,
     UpdateContractStatusSchema,
+    UpdateProjectSchema,
     UpdateProjectStatusSchema,
     UpdateRequirementSchema,
     UpdateRequirementStatusSchema,
@@ -64,12 +67,16 @@ from ..use_cases.use_cases import (
     CreateRequirementUseCase,
     CreateTaskUseCase,
     AddProjectTeamMemberUseCase,
+    DeleteContractUseCase,
+    DeleteProjectUseCase,
     DeleteRequirementUseCase,
     LinkRequirementToTaskUseCase,
     RemoveProjectTeamMemberUseCase,
     UnlinkRequirementFromTaskUseCase,
     UpdateContractStatusUseCase,
+    UpdateContractUseCase,
     UpdateProjectStatusUseCase,
+    UpdateProjectUseCase,
     UpdateRequirementStatusUseCase,
     UpdateRequirementUseCase,
     UpdateTaskStatusUseCase,
@@ -269,6 +276,56 @@ def web_update_contract_status_view(request, contract_id: str):
 
 
 @login_required(login_url="/login")
+def web_update_contract_view(request, contract_id: str):
+    if request.method == "POST":
+        try:
+            contract_uuid = UUID(contract_id)
+        except ValueError:
+            messages.error(request, "ID do contrato inválido.")
+            return redirect("/")
+
+        title = request.POST.get("title", "").strip()
+        description = request.POST.get("description", "").strip()
+        owner_id_str = request.POST.get("owner_id", "").strip()
+
+        try:
+            dto = UpdateContractSchema(
+                title=title if title else None,
+                description=description if description else None,
+                owner_id=UUID(owner_id_str) if owner_id_str else None,
+            )
+            UpdateContractUseCase(contract_repo=contract_repo, user_repo=user_repo).execute(contract_uuid, dto)
+            messages.success(request, "Contrato atualizado com sucesso!")
+        except ValidationError as e:
+            msg = e.errors()[0].get("msg", "Dados do contrato inválidos.")
+            messages.error(request, f"Erro de validação: {msg}")
+        except ValueError as e:
+            messages.error(request, f"Dados inválidos: {str(e)}")
+        except UserNotFoundError as e:
+            messages.error(request, f"Usuário não encontrado: {e.message}")
+        except ContractNotFoundError as e:
+            messages.error(request, f"Contrato não encontrado: {e.message}")
+        except DomainError as e:
+            messages.error(request, f"Erro de domínio: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_delete_contract_view(request, contract_id: str):
+    if request.method == "POST":
+        try:
+            DeleteContractUseCase(contract_repo=contract_repo).execute(UUID(contract_id))
+            messages.success(request, "Contrato excluído com sucesso!")
+        except ContractNotFoundError as e:
+            messages.error(request, f"Contrato não encontrado: {e.message}")
+        except DomainError as e:
+            messages.error(request, f"Erro ao excluir contrato: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
 def web_update_project_status_view(request, project_id: str):
     if request.method == "POST":
         try:
@@ -297,6 +354,56 @@ def web_update_project_team_view(request, project_id: str):
             messages.error(request, "Usuário inválido.")
         except DomainError as e:
             messages.error(request, f"Erro ao alterar equipe: {e}")
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_update_project_view(request, project_id: str):
+    if request.method == "POST":
+        try:
+            project_uuid = UUID(project_id)
+        except ValueError:
+            messages.error(request, "ID do projeto inválido.")
+            return redirect("/")
+
+        title = request.POST.get("title", "").strip()
+        description = request.POST.get("description", "").strip()
+        owner_id_str = request.POST.get("owner_id", "").strip()
+
+        try:
+            dto = UpdateProjectSchema(
+                title=title if title else None,
+                description=description if description else None,
+                owner_id=UUID(owner_id_str) if owner_id_str else None,
+            )
+            UpdateProjectUseCase(project_repo=project_repo, user_repo=user_repo).execute(project_uuid, dto)
+            messages.success(request, "Projeto atualizado com sucesso!")
+        except ValidationError as e:
+            msg = e.errors()[0].get("msg", "Dados do projeto inválidos.")
+            messages.error(request, f"Erro de validação: {msg}")
+        except ValueError as e:
+            messages.error(request, f"Dados inválidos: {str(e)}")
+        except UserNotFoundError as e:
+            messages.error(request, f"Usuário não encontrado: {e.message}")
+        except ProjectNotFoundError as e:
+            messages.error(request, f"Projeto não encontrado: {e.message}")
+        except DomainError as e:
+            messages.error(request, f"Erro de domínio: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_delete_project_view(request, project_id: str):
+    if request.method == "POST":
+        try:
+            DeleteProjectUseCase(project_repo=project_repo).execute(UUID(project_id))
+            messages.success(request, "Projeto excluído com sucesso!")
+        except ProjectNotFoundError as e:
+            messages.error(request, f"Projeto não encontrado: {e.message}")
+        except DomainError as e:
+            messages.error(request, f"Erro ao excluir projeto: {e}")
+
     return redirect("/")
 
 
@@ -697,6 +804,57 @@ def contracts_view(request):
 
 
 @csrf_exempt
+def contract_view(request, contract_id: str):
+    try:
+        contract_uuid = UUID(contract_id)
+    except ValueError:
+        return JsonResponse({"detail": "UUID do contrato inválido"}, status=422)
+
+    if request.method in ["PUT", "PATCH"]:
+        try:
+            body = json.loads(request.body.decode("utf-8")) if request.body else {}
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "JSON inválido"}, status=422)
+
+        try:
+            dto = UpdateContractSchema(**body)
+        except ValidationError as e:
+            return _format_pydantic_error(e)
+
+        use_case = UpdateContractUseCase(contract_repo=contract_repo, user_repo=user_repo)
+        try:
+            contract = use_case.execute(contract_uuid, dto)
+            response_dto = ContractResponseSchema(
+                id=contract.id,
+                title=contract.title,
+                description=contract.description,
+                contract_file=contract.contract_file,
+                status=contract.status,
+                owner_id=contract.owner_id,
+                created_at=contract.created_at,
+            )
+            return JsonResponse(response_dto.model_dump(mode="json"), status=200)
+        except ContractNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
+        except UserNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    elif request.method == "DELETE":
+        use_case = DeleteContractUseCase(contract_repo=contract_repo)
+        try:
+            use_case.execute(contract_uuid)
+            return JsonResponse({"message": "Contrato excluído com sucesso"}, status=204)
+        except ContractNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"detail": "Método não permitido"}, status=405)
+
+
+@csrf_exempt
 def projects_view(request):
     if request.method == "POST":
         try:
@@ -723,6 +881,56 @@ def projects_view(request):
             return JsonResponse(response_dto.model_dump(mode="json"), status=201)
         except UserNotFoundError as e:
             return JsonResponse({"error": e.message}, status=400)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"detail": "Método não permitido"}, status=405)
+
+
+@csrf_exempt
+def project_view(request, project_id: str):
+    try:
+        project_uuid = UUID(project_id)
+    except ValueError:
+        return JsonResponse({"detail": "UUID do projeto inválido"}, status=422)
+
+    if request.method in ["PUT", "PATCH"]:
+        try:
+            body = json.loads(request.body.decode("utf-8")) if request.body else {}
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "JSON inválido"}, status=422)
+
+        try:
+            dto = UpdateProjectSchema(**body)
+        except ValidationError as e:
+            return _format_pydantic_error(e)
+
+        use_case = UpdateProjectUseCase(project_repo=project_repo, user_repo=user_repo)
+        try:
+            project = use_case.execute(project_uuid, dto)
+            response_dto = ProjectResponseSchema(
+                id=project.id,
+                contract_id=project.contract_id,
+                title=project.title,
+                description=project.description,
+                owner_id=project.owner_id,
+                created_at=project.created_at,
+            )
+            return JsonResponse(response_dto.model_dump(mode="json"), status=200)
+        except ProjectNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
+        except UserNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    elif request.method == "DELETE":
+        use_case = DeleteProjectUseCase(project_repo=project_repo)
+        try:
+            use_case.execute(project_uuid)
+            return JsonResponse({"message": "Projeto excluído com sucesso"}, status=204)
+        except ProjectNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
         except DomainError as e:
             return JsonResponse({"error": str(e)}, status=400)
 
