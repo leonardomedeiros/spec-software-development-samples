@@ -1,0 +1,36 @@
+<!-- MODAL: EDITAR PROJETO -->
+<div class="modal fade" id="modalEditProject" tabindex="-1" aria-labelledby="modalEditProjectLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" id="formEditProject" action="">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalEditProjectLabel"><i class="bi bi-pencil me-2"></i>Editar Projeto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título</label>
+                        <input type="text" name="title" id="editProjectTitle" class="form-control" minlength="1" maxlength="120">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição (Suporta Markdown)</label>
+                        <textarea name="description" id="editProjectDescription" class="form-control" style="min-height: 200px; resize: vertical;"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Proprietário</label>
+                        <select name="owner_id" id="editProjectOwner" class="form-select">
+                            {% for user in users %}
+                                <option value="{{ user.id }}">{{ user.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

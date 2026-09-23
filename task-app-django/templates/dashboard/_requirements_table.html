@@ -1,0 +1,105 @@
+<!-- Requirements -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="fw-bold mb-0"><i class="bi bi-list-check me-2"></i>Requisitos</h5>
+            <span class="badge bg-dark rounded-pill">{{ requirements|length }}</span>
+        </div>
+        {% if requirements %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Código</th>
+                            <th>Título</th>
+                            <th>Tipo</th>
+                            <th>Prioridade</th>
+                            <th>Status</th>
+                            <th>Tarefas Vinculadas</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requirements %}
+                            <tr>
+                                <td class="fw-semibold">{{ req.code }}</td>
+                                <td>
+                                    {{ req.title }}
+                                    {% if req.description %}
+                                        <div class="text-muted small">{{ req.description|truncatechars:80 }}</div>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge bg-secondary">{{ req.type.value }}</span></td>
+                                <td>
+                                    <span class="badge {% if req.priority.value == 'HIGH' %}bg-danger{% elif req.priority.value == 'MEDIUM' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                        {{ req.priority.value }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <form method="POST" action="/web/requirements/{{ req.id }}/status" class="d-flex gap-1">
+                                        {% csrf_token %}
+                                        <select name="status" class="form-select form-select-sm" aria-label="Status do requisito">
+                                            <option value="DRAFT" {% if req.status.value == 'DRAFT' %}selected{% endif %}>DRAFT</option>
+                                            <option value="APPROVED" {% if req.status.value == 'APPROVED' %}selected{% endif %}>APPROVED</option>
+                                            <option value="IMPLEMENTED" {% if req.status.value == 'IMPLEMENTED' %}selected{% endif %}>IMPLEMENTED</option>
+                                            <option value="DEPRECATED" {% if req.status.value == 'DEPRECATED' %}selected{% endif %}>DEPRECATED</option>
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Atualizar status">
+                                            <i class="bi bi-check2"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1 mb-2">
+                                        {% for task in req.linked_tasks %}
+                                            <form method="POST" action="/web/requirements/{{ req.id }}/tasks" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="remove">
+                                                <input type="hidden" name="task_id" value="{{ task.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Desvincular {{ task.title }}">
+                                                    {{ task.title }} <i class="bi bi-x"></i>
+                                                </button>
+                                            </form>
+                                        {% empty %}
+                                            <span class="text-muted small">Sem tarefas vinculadas</span>
+                                        {% endfor %}
+                                    </div>
+                                    <form method="POST" action="/web/requirements/{{ req.id }}/tasks" class="d-flex gap-1">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="add">
+                                        <select name="task_id" class="form-select form-select-sm" aria-label="Vincular tarefa ao requisito">
+                                            <option value="">Vincular tarefa...</option>
+                                            {% for task in all_tasks %}
+                                                {% if task.id not in req.linked_task_ids %}
+                                                    <option value="{{ task.id }}">{{ task.title }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Vincular tarefa">
+                                            <i class="bi bi-link-45deg"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditRequirement" data-req-id="{{ req.id }}" data-req-code="{{ req.code }}" data-req-title="{{ req.title|escapejs }}" data-req-description="{{ req.description|escapejs }}" data-req-type="{{ req.type.value }}" data-req-priority="{{ req.priority.value }}" title="Editar requisito">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <form method="POST" action="/web/requirements/{{ req.id }}/delete" class="d-inline" data-entity-type="requisito">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir requisito">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">Nenhum requisito cadastrado. Use o botão <strong>Novo Requisito</strong> para começar.</p>
+        {% endif %}
+    </div>
+</div>

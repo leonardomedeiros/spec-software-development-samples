@@ -1,0 +1,50 @@
+<!-- MODAL: NOVO PROJETO -->
+<div class="modal fade" id="modalProject" tabindex="-1" aria-labelledby="modalProjectLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="/web/projects">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalProjectLabel"><i class="bi bi-folder-plus me-2"></i>Novo Projeto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título do Projeto *</label>
+                        <input type="text" name="title" class="form-control" placeholder="ex: Reformulação do E-commerce" required maxlength="120">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição (Suporta Markdown)</label>
+                        <textarea name="description" class="form-control" style="min-height: 400px; resize: vertical;" placeholder="Detalhes dos objetivos do projeto. Use **negrito**, *itálico*, `código`, # Títulos, - Listas, etc. Descreva os objetivos, escopo, riscos e plano de entrega."></textarea>
+                        <div class="form-text"><i class="bi bi-info-circle me-1"></i>Use <strong>Markdown</strong> para formatação | Mínimo 20 linhas | Redimensionável</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Contrato *</label>
+                        <select name="contract_id" class="form-select" required>
+                            <option value="">Selecione um contrato</option>
+                            {% for contract in contracts %}
+                                <option value="{{ contract.id }}">{{ contract.title }}</option>
+                            {% empty %}
+                                <option disabled>Nenhum contrato cadastrado</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Proprietário (Owner) *</label>
+                        <select name="owner_id" class="form-select" required>
+                            {% for u in users %}
+                                <option value="{{ u.id }}">{{ u.name }} ({{ u.email }})</option>
+                            {% empty %}
+                                <option disabled selected>Cadastre um usuário primeiro</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" {% if not users or not contracts %}disabled{% endif %}>Criar Projeto</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

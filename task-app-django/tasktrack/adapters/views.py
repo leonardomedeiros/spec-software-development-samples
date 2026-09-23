@@ -175,9 +175,16 @@ def home_view(request):
 
     all_tasks = task_repo.list_all()
     requirements = requirement_repo.list_all()
+    task_requirement_codes = {}
     for requirement in requirements:
         requirement.linked_tasks = requirement_repo.list_linked_tasks(requirement.id)
         requirement.linked_task_ids = {t.id for t in requirement.linked_tasks}
+        for linked_task in requirement.linked_tasks:
+            task_requirement_codes.setdefault(linked_task.id, []).append(requirement.code)
+
+    # Anexa os códigos dos requisitos atendidos por cada tarefa (vínculo N:N, seção 2.6)
+    for t in tasks:
+        t.requirement_codes = task_requirement_codes.get(t.id, [])
 
     context = {
         "projects": projects,

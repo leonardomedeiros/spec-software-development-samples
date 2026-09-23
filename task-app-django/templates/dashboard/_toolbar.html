@@ -1,0 +1,29 @@
+<div class="row mb-4 align-items-center">
+    <div class="col-md-6">
+        <h2 class="fw-bold mb-1">Painel de Gestão de Tarefas</h2>
+        <p class="text-muted mb-0">Controle de ciclo de vida de projetos e tarefas com conformidade arquitetural MVT + Clean Use Cases.</p>
+    </div>
+    <div class="col-md-6 text-md-end mt-3 mt-md-0 d-flex gap-2 justify-content-md-end flex-wrap">
+        <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#modalContract">
+            <i class="bi bi-file-earmark-plus me-1"></i> Novo Contrato
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalUser">
+            <i class="bi bi-person-plus me-1"></i> Novo Usuário
+        </button>
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalProject">
+            <i class="bi bi-folder-plus me-1"></i> Novo Projeto
+        </button>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTask" {% if not projects %}disabled title="Cadastre um projeto primeiro"{% endif %}>
+            <i class="bi bi-plus-circle me-1"></i> Nova Tarefa
+        </button>
+        <button type="button" class="btn btn-outline-dark" data-bs-toggle="modal" data-bs-target="#modalRequirement">
+            <i class="bi bi-list-check me-1"></i> Novo Requisito
+        </button>
+        <form method="POST" action="/web/specification/export" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-success" title="Regenera a seção de requisitos do SPECIFICATION.md">
+                <i class="bi bi-file-earmark-arrow-down me-1"></i> Exportar SPECIFICATION.md
+            </button>
+        </form>
+    </div>
+</div>

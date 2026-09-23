@@ -1,0 +1,156 @@
+<!-- Contracts -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-text me-2"></i>Contratos</h5>
+            <span class="badge bg-info rounded-pill">{{ contracts|length }}</span>
+        </div>
+        {% if contracts %}
+            <div class="row g-3">
+                <!-- PROSPECTING -->
+                <div class="col-lg-4">
+                    <div class="kanban-col shadow-sm h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-hourglass-split text-warning fs-6 me-2"></i>PROSPECTING</h6>
+                            <span class="badge bg-secondary rounded-pill">{{ prospecting_contracts|length }}</span>
+                        </div>
+                        {% for c in prospecting_contracts %}
+                            <div class="card contract-card mb-3 shadow-sm border-0">
+                                <div class="card-body">
+                                    <h6 class="card-title fw-bold mb-1">{{ c.title }}</h6>
+                                    {% if c.description %}
+                                        <p class="card-text text-muted small mb-2">{{ c.description|truncatechars:80 }}</p>
+                                    {% endif %}
+                                    <p class="small text-muted mb-2"><i class="bi bi-person me-1"></i>{{ c.owner_name|default:c.owner_id }}</p>
+                                    {% if c.contract_file %}
+                                        <a href="{% url 'download_contract' c.contract_file %}" class="btn btn-sm btn-outline-secondary mb-2">
+                                            <i class="bi bi-download me-1"></i>Baixar
+                                        </a>
+                                    {% endif %}
+                                    <hr class="my-2 text-muted">
+                                    <form method="POST" action="/web/contracts/{{ c.id }}/status" class="mb-2">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="status" value="IN_PROGRESS">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                                            Iniciar <i class="bi bi-arrow-right ms-1"></i>
+                                        </button>
+                                    </form>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditContract" data-contract-id="{{ c.id }}" data-contract-title="{{ c.title|escapejs }}" data-contract-description="{{ c.description|escapejs }}" data-contract-owner="{{ c.owner_id }}" title="Editar contrato">
+                                            <i class="bi bi-pencil me-1"></i> Editar
+                                        </button>
+                                        <form method="POST" action="/web/contracts/{{ c.id }}/delete" class="flex-grow-1" data-entity-type="contrato" data-entity-warning="Todos os projetos e tarefas vinculados a este contrato também serão excluídos.">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir contrato">
+                                                <i class="bi bi-trash me-1"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="text-center py-4 text-muted small">Nenhum contrato em prospecção.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <!-- IN_PROGRESS -->
+                <div class="col-lg-4">
+                    <div class="kanban-col shadow-sm h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-play-circle-fill text-info fs-6 me-2"></i>IN_PROGRESS</h6>
+                            <span class="badge bg-secondary rounded-pill">{{ in_progress_contracts|length }}</span>
+                        </div>
+                        {% for c in in_progress_contracts %}
+                            <div class="card contract-card mb-3 shadow-sm border-0">
+                                <div class="card-body">
+                                    <h6 class="card-title fw-bold mb-1">{{ c.title }}</h6>
+                                    {% if c.description %}
+                                        <p class="card-text text-muted small mb-2">{{ c.description|truncatechars:80 }}</p>
+                                    {% endif %}
+                                    <p class="small text-muted mb-2"><i class="bi bi-person me-1"></i>{{ c.owner_name|default:c.owner_id }}</p>
+                                    {% if c.contract_file %}
+                                        <a href="{% url 'download_contract' c.contract_file %}" class="btn btn-sm btn-outline-secondary mb-2">
+                                            <i class="bi bi-download me-1"></i>Baixar
+                                        </a>
+                                    {% endif %}
+                                    <hr class="my-2 text-muted">
+                                    <div class="d-flex gap-2 mb-2">
+                                        <form method="POST" action="/web/contracts/{{ c.id }}/status" class="w-50">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="PROSPECTING">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                                                <i class="bi bi-arrow-left me-1"></i> Voltar
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="/web/contracts/{{ c.id }}/status" class="w-50">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="SIGNED">
+                                            <button type="submit" class="btn btn-sm btn-success w-100">
+                                                Concluir <i class="bi bi-check2 ms-1"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditContract" data-contract-id="{{ c.id }}" data-contract-title="{{ c.title|escapejs }}" data-contract-description="{{ c.description|escapejs }}" data-contract-owner="{{ c.owner_id }}" title="Editar contrato">
+                                            <i class="bi bi-pencil me-1"></i> Editar
+                                        </button>
+                                        <form method="POST" action="/web/contracts/{{ c.id }}/delete" class="flex-grow-1" data-entity-type="contrato" data-entity-warning="Todos os projetos e tarefas vinculados a este contrato também serão excluídos.">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir contrato">
+                                                <i class="bi bi-trash me-1"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="text-center py-4 text-muted small">Nenhum contrato em andamento.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <!-- SIGNED -->
+                <div class="col-lg-4">
+                    <div class="kanban-col shadow-sm h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-check-circle-fill text-success fs-6 me-2"></i>SIGNED</h6>
+                            <span class="badge bg-secondary rounded-pill">{{ signed_contracts|length }}</span>
+                        </div>
+                        {% for c in signed_contracts %}
+                            <div class="card contract-card mb-3 shadow-sm border-0 bg-white">
+                                <div class="card-body">
+                                    <h6 class="card-title fw-bold mb-1">{{ c.title }}</h6>
+                                    {% if c.description %}
+                                        <p class="card-text text-muted small mb-2">{{ c.description|truncatechars:80 }}</p>
+                                    {% endif %}
+                                    <p class="small text-muted mb-2"><i class="bi bi-person me-1"></i>{{ c.owner_name|default:c.owner_id }}</p>
+                                    {% if c.contract_file %}
+                                        <a href="{% url 'download_contract' c.contract_file %}" class="btn btn-sm btn-outline-secondary mb-2">
+                                            <i class="bi bi-download me-1"></i>Baixar
+                                        </a>
+                                    {% endif %}
+                                    <hr class="my-2 text-muted">
+                                    <span class="badge bg-success mb-2"><i class="bi bi-check2-all me-1"></i>Assinado</span>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditContract" data-contract-id="{{ c.id }}" data-contract-title="{{ c.title|escapejs }}" data-contract-description="{{ c.description|escapejs }}" data-contract-owner="{{ c.owner_id }}" title="Editar contrato">
+                                            <i class="bi bi-pencil me-1"></i> Editar
+                                        </button>
+                                        <form method="POST" action="/web/contracts/{{ c.id }}/delete" class="flex-grow-1" data-entity-type="contrato" data-entity-warning="Todos os projetos e tarefas vinculados a este contrato também serão excluídos.">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir contrato">
+                                                <i class="bi bi-trash me-1"></i> Excluir
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="text-center py-4 text-muted small">Nenhum contrato assinado.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">Nenhum contrato cadastrado. Use o botão <strong>Novo Contrato</strong> para anexar um arquivo.</p>
+        {% endif %}
+    </div>
+</div>

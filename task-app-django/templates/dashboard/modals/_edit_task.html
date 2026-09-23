@@ -1,0 +1,59 @@
+<!-- MODAL: EDITAR TAREFA -->
+<div class="modal fade" id="modalEditTask" tabindex="-1" aria-labelledby="modalEditTaskLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" id="formEditTask" action="">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalEditTaskLabel"><i class="bi bi-pencil me-2"></i>Editar Tarefa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="currentTaskId" value="">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título da Tarefa (3 a 100 caracteres)</label>
+                        <input type="text" name="title" id="editTaskTitle" class="form-control" minlength="3" maxlength="100" placeholder="Deixe vazio para não alterar">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição (Suporta Markdown)</label>
+                        <textarea name="description" id="editTaskDescription" class="form-control" style="min-height: 400px; resize: vertical;" placeholder="Deixe vazio para não alterar. Suporta: **negrito**, *itálico*, `código`, # Títulos, - Listas, etc. Amplo espaço para documentar completamente a tarefa."></textarea>
+                        <div class="form-text"><i class="bi bi-info-circle me-1"></i>Use <strong>Markdown</strong> para formatação | Mínimo 20 linhas | Redimensionável verticalmente</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Prioridade</label>
+                            <select name="priority" id="editTaskPriority" class="form-select">
+                                <option value="">Não alterar</option>
+                                <option value="LOW">LOW (Baixa)</option>
+                                <option value="MEDIUM">MEDIUM (Média)</option>
+                                <option value="HIGH">HIGH (Alta)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Responsável</label>
+                            <select name="assignee_id" id="editTaskAssignee" class="form-select">
+                                <option value="">Nenhum</option>
+                                {% for u in users %}
+                                    <option value="{{ u.id }}">{{ u.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Data de Vencimento (deve ser futura)</label>
+                        <input type="date" name="due_date" id="editTaskDueDate" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">URL do GitHub (Issue, PR, etc)</label>
+                        <input type="url" name="github_url" id="editTaskGithubUrl" class="form-control" placeholder="https://github.com/..." maxlength="255">
+                        <div class="form-text">Link relativo a esta tarefa no GitHub (opcional)</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Atualizar Tarefa</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

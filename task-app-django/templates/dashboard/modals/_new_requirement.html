@@ -1,0 +1,51 @@
+<!-- MODAL: NOVO REQUISITO -->
+<div class="modal fade" id="modalRequirement" tabindex="-1" aria-labelledby="modalRequirementLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="/web/requirements">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalRequirementLabel"><i class="bi bi-list-check me-2"></i>Novo Requisito</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Código (único) *</label>
+                        <input type="text" name="code" class="form-control" placeholder="ex: RF-01" required minlength="2" maxlength="20">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título (3 a 150 caracteres) *</label>
+                        <input type="text" name="title" class="form-control" placeholder="ex: Autenticação de Usuários" required minlength="3" maxlength="150">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição (Suporta Markdown)</label>
+                        <textarea name="description" class="form-control" style="min-height: 200px; resize: vertical;" placeholder="Detalhe o requisito: contexto, critérios de aceite, etc."></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Tipo *</label>
+                            <select name="type" class="form-select" required>
+                                <option value="FUNCTIONAL">FUNCTIONAL</option>
+                                <option value="NON_FUNCTIONAL">NON_FUNCTIONAL</option>
+                                <option value="BUSINESS_RULE">BUSINESS_RULE</option>
+                                <option value="TECHNICAL_CONSTRAINT">TECHNICAL_CONSTRAINT</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Prioridade *</label>
+                            <select name="priority" class="form-select">
+                                <option value="LOW">LOW (Baixa)</option>
+                                <option value="MEDIUM" selected>MEDIUM (Média)</option>
+                                <option value="HIGH">HIGH (Alta)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Cadastrar Requisito</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

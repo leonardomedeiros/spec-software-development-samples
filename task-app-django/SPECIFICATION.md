@@ -196,6 +196,7 @@ CREATE TABLE requirements (
 * **User -> Project:** 1 Usuário pode ser proprietário (*owner*) de N Projetos (1:N).
 * **Project -> Task:** 1 Projeto possui N Tarefas (1:N). Ao excluir um Projeto, suas Tarefas são excluídas em cascata (`CASCADE`).
 * **User -> Task:** 1 Usuário pode ser atribuído como responsável a N Tarefas (1:N).
+* **Requirement <-> Task:** 1 Requisito pode ser vinculado a N Tarefas e 1 Tarefa pode atender a N Requisitos (N:N), por meio da tabela `requirement_task_links` (ver seção 2.6). Excluir um Requisito ou uma Tarefa remove os vínculos correspondentes em cascata, sem excluir a entidade do outro lado.
 
 ### 2.4 Equipes de Projetos
 
@@ -262,6 +263,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * `PENDING` (Pendentes): Cartões com badge de prioridade, prazo, botão *"Iniciar"* para transição direta para `IN_PROGRESS`, botão *"Editar"* (lápis) e botão *"Excluir"* (lixeira).
     * `IN_PROGRESS` (Em Andamento): Cartões com botões *"Voltar"* (para `PENDING`) e *"Concluir"* (para `COMPLETED`), além de botões expandidos *"Editar"* e *"Excluir"*.
     * `COMPLETED` (Concluídas): Cartões com badge de conclusão, rastreamento de histórico completo, botões *"Editar"* (para reabertura ou alteração de metadata) e *"Excluir"* (para remover).
+    * **Rastreabilidade Requisito ↔ Tarefa (vínculo N:N, seção 2.6):** todo cartão de tarefa que estiver vinculado a um ou mais requisitos exibe, abaixo do prazo/responsável, uma linha "Requisitos:" com um badge por código de requisito vinculado (ex.: `RF-01`, `RF-02`). Isso torna a rastreabilidade visível a partir de qualquer ponto do dashboard: a tabela de Requisitos mostra quais tarefas atendem a cada requisito (seção já existente), e o Kanban de Tarefas mostra, de forma recíproca e somente leitura, quais requisitos cada tarefa atende — sem exigir navegação até a tabela de requisitos. A gestão do vínculo (adicionar/remover) permanece centralizada na tabela de Requisitos (`POST /web/requirements/{requirement_id}/tasks`, seção 3.2), evitando duas interfaces divergentes para a mesma operação.
   * **Modais Interativos:**
     * Modal de Criação do Contrato (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown).
     * Modal de Edição de Contrato (título, descrição em Markdown e proprietário; pré-preenchido com dados do contrato selecionado; `contract_file` e `status` não são editáveis por este modal).
@@ -693,6 +695,20 @@ Qualquer uma das duas opções substitui apenas o conteúdo entre os marcadores,
 deste documento.
 
 <!-- REQUISITOS:START -->
-_Nenhum requisito cadastrado ainda. Use o dashboard ou `export_specification` para gerar esta seção._
+**RF-01 — Req One**
+*Tipo: Requisito Funcional | Prioridade: MEDIUM | Status: DRAFT*
+
+Tarefas vinculadas: _nenhuma tarefa vinculada._
+
+**RF-02 — Req Two**
+*Tipo: Requisito Funcional | Prioridade: MEDIUM | Status: DRAFT*
+
+Tarefas vinculadas: _nenhuma tarefa vinculada._
+
+**RF-5b4806 — Req**
+*Tipo: Requisito Funcional | Prioridade: MEDIUM | Status: DRAFT*
+
+Tarefas vinculadas:
+* T1 (`PENDING`)
 <!-- REQUISITOS:END -->
 

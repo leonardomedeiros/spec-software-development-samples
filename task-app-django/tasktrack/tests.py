@@ -277,6 +277,32 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         self.assertContains(response, "Painel de Gestão de Tarefas")
         self.assertContains(response, self.project.title)
 
+    def test_web_dashboard_shows_requirement_codes_on_linked_task_card(self):
+        """Vínculo N:N (seção 2.6): o cartão da tarefa no Kanban exibe os códigos
+        de TODOS os requisitos vinculados a ela, e um mesmo requisito pode
+        aparecer em vários cartões de tarefa diferentes."""
+        req1 = CreateRequirementUseCase(self.requirement_repo).execute(
+            CreateRequirementSchema(code="RF-01", title="Login", type=RequirementType.FUNCTIONAL)
+        )
+        req2 = CreateRequirementUseCase(self.requirement_repo).execute(
+            CreateRequirementSchema(code="RF-02", title="Logout", type=RequirementType.FUNCTIONAL)
+        )
+        other_task = self.task_repo.save(
+            Task(project_id=self.project.id, title="Outra Tarefa", status=TaskStatus.PENDING)
+        )
+
+        # self.task atende aos dois requisitos; other_task também atende ao RF-01
+        LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(req1.id, self.task.id)
+        LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(req2.id, self.task.id)
+        LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(req1.id, other_task.id)
+
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode("utf-8")
+        self.assertIn("RF-01", body)
+        self.assertIn("RF-02", body)
+        self.assertGreaterEqual(body.count("RF-01"), 2)  # aparece no requisito e em 2 cartões de tarefa
+
     # -------------------------------------------------------------
     # CONTRACTS (nova spec: tabela contracts com contract_file)
     # -------------------------------------------------------------

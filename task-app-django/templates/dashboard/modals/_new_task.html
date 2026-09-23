@@ -1,0 +1,61 @@
+<!-- MODAL: NOVA TAREFA -->
+<div class="modal fade" id="modalTask" tabindex="-1" aria-labelledby="modalTaskLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="/web/tasks">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalTaskLabel"><i class="bi bi-plus-circle me-2"></i>Nova Tarefa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Projeto *</label>
+                        <select name="project_id" class="form-select" required>
+                            {% for p in projects %}
+                                <option value="{{ p.id }}" {% if selected_project_id == p.id|stringformat:'s' %}selected{% endif %}>{{ p.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título da Tarefa (3 a 100 caracteres) *</label>
+                        <input type="text" name="title" class="form-control" placeholder="ex: Implementar Gateway de Pagamento" required minlength="3" maxlength="100">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição (Suporta Markdown)</label>
+                        <textarea name="description" class="form-control" style="min-height: 400px; resize: vertical;" placeholder="Detalhes técnicos da tarefa. Use **negrito**, *itálico*, `código`, # Títulos, - Listas, etc. Inclua contexto, aceitação, testes, links e qualquer informação relevante."></textarea>
+                        <div class="form-text"><i class="bi bi-info-circle me-1"></i>Use <strong>Markdown</strong> para formatação | Mínimo 20 linhas | Redimensionável</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Prioridade *</label>
+                            <select name="priority" class="form-select">
+                                <option value="LOW">LOW (Baixa)</option>
+                                <option value="MEDIUM" selected>MEDIUM (Média)</option>
+                                <option value="HIGH">HIGH (Alta)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Responsável</label>
+                            <select name="assignee_id" class="form-select">
+                                <option value="">Nenhum (Opcional)</option>
+                                {% for u in users %}
+                                    <option value="{{ u.id }}">{{ u.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Data de Vencimento (deve ser futura) - Opcional</label>
+                        <input type="date" name="due_date" class="form-control">
+                        <div class="form-text">Deixe em branco para atribuir posteriormente</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Cadastrar Tarefa</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

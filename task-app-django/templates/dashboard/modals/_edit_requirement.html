@@ -1,0 +1,51 @@
+<!-- MODAL: EDITAR REQUISITO -->
+<div class="modal fade" id="modalEditRequirement" tabindex="-1" aria-labelledby="modalEditRequirementLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" id="formEditRequirement" action="">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalEditRequirementLabel"><i class="bi bi-pencil me-2"></i>Editar Requisito</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Código (único)</label>
+                        <input type="text" name="code" id="editReqCode" class="form-control" minlength="2" maxlength="20">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título (3 a 150 caracteres)</label>
+                        <input type="text" name="title" id="editReqTitle" class="form-control" minlength="3" maxlength="150">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição (Suporta Markdown)</label>
+                        <textarea name="description" id="editReqDescription" class="form-control" style="min-height: 200px; resize: vertical;"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Tipo</label>
+                            <select name="type" id="editReqType" class="form-select">
+                                <option value="FUNCTIONAL">FUNCTIONAL</option>
+                                <option value="NON_FUNCTIONAL">NON_FUNCTIONAL</option>
+                                <option value="BUSINESS_RULE">BUSINESS_RULE</option>
+                                <option value="TECHNICAL_CONSTRAINT">TECHNICAL_CONSTRAINT</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Prioridade</label>
+                            <select name="priority" id="editReqPriority" class="form-select">
+                                <option value="LOW">LOW (Baixa)</option>
+                                <option value="MEDIUM">MEDIUM (Média)</option>
+                                <option value="HIGH">HIGH (Alta)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

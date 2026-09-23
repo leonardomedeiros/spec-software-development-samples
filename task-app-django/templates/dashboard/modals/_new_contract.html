@@ -1,0 +1,44 @@
+<!-- MODAL: NOVO CONTRATO -->
+<div class="modal fade" id="modalContract" tabindex="-1" aria-labelledby="modalContractLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="/web/contracts" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalContractLabel"><i class="bi bi-file-earmark-plus me-2"></i>Novo Contrato</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Título do Contrato *</label>
+                        <input type="text" name="title" class="form-control" placeholder="ex: Contrato de Prestação de Serviços" required maxlength="120">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Descrição (Suporta Markdown)</label>
+                        <textarea name="description" class="form-control" style="min-height: 400px; resize: vertical;" placeholder="Detalhes do contrato. Use **negrito**, *itálico*, `código`, # Títulos, - Listas, etc. Você tem amplo espaço para documentar completamente o contrato."></textarea>
+                        <div class="form-text"><i class="bi bi-info-circle me-1"></i>Use <strong>Markdown</strong> para formatação | Mínimo 20 linhas | Redimensionável</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Proprietário (Owner) *</label>
+                        <select name="owner_id" class="form-select" required>
+                            {% for u in users %}
+                                <option value="{{ u.id }}">{{ u.name }} ({{ u.email }})</option>
+                            {% empty %}
+                                <option disabled selected>Cadastre um usuário primeiro</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Arquivo do Contrato</label>
+                        <input type="file" name="contract_file" class="form-control" accept=".pdf,.doc,.docx,.txt">
+                        <div class="form-text">Anexe o arquivo do contrato (ex: PDF). Opcional.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-info text-white" {% if not users %}disabled{% endif %}>Criar Contrato</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
