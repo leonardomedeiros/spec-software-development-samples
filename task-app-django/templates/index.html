@@ -900,6 +900,15 @@
 </div>
 
 <script>
+    // Restore scroll position after a page reload triggered by this script (e.g. task deletion)
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedScrollY = sessionStorage.getItem('taskTrackScrollY');
+        if (savedScrollY !== null) {
+            sessionStorage.removeItem('taskTrackScrollY');
+            window.scrollTo(0, parseInt(savedScrollY, 10) || 0);
+        }
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
         // Handle create task form - find the form inside the modalTask
         const modalTask = document.getElementById('modalTask');
@@ -1078,6 +1087,7 @@
                 const modalEl = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
                 document.getElementById('confirmDeleteBtn').onclick = function() {
                     modalEl.hide();
+                    sessionStorage.setItem('taskTrackScrollY', String(window.scrollY));
                     form.submit();
                 };
                 modalEl.show();
