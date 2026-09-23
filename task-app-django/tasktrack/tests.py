@@ -7,7 +7,6 @@ from pathlib import Path
 from django.contrib.auth.models import User as AuthUser
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
-import pytest
 
 from tasktrack.domain.entities import Contract, Project, Requirement, Task, User
 from tasktrack.domain.enums import (
