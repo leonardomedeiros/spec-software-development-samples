@@ -1,7 +1,9 @@
 {
-    "python.defaultInterpreterPath": "${workspaceFolder}/task-app-django/.venv/Scripts/python.exe",
-    "python.terminal.activateEnvironment": true,
-    "python.terminal.activateEnvInCurrentTerminal": true,
-    "terminal.integrated.cwd": "${workspaceFolder}/task-app-django",
-    "python-envs.defaultEnvManager": "ms-python.python:system"
+    "python.testing.pytestArgs": [
+        "custody"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda"
 }

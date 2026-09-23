@@ -205,7 +205,7 @@ CREATE TABLE task_history (
   * `COMPLETED` quando todas as tarefas estiverem concluídas;
   * `NO_TASKS` quando o projeto não possuir tarefas.
   * A alteração para `PENDING` move as tarefas do projeto para `PENDING`;
-  * A alteração para `IN_PROGRESS` move as tarefas pendentes para `IN_PROGRESS`;
+  * A alteração para `IN_PROGRESS` **não move nenhuma tarefa** — é um status calculado, então só é aceita se já existir ao menos uma tarefa `IN_PROGRESS`; caso contrário a operação é rejeitada com `INVALID_STATUS_TRANSITION` (o usuário deve iniciar uma tarefa individualmente pelo botão *"Iniciar"* de cada tarefa);
   * A alteração para `COMPLETED` conclui as tarefas pendentes ou em andamento;
   * Não é permitido reabrir um projeto com tarefas `COMPLETED` para `PENDING` ou `IN_PROGRESS`.
 * O dashboard deve exibir os contratos e projetos com seus status e oferecer controles para alterá-los.

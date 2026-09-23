@@ -121,8 +121,11 @@ class UpdateProjectStatusUseCase:
         elif dto.status == ProjectStatus.IN_PROGRESS:
             if any(task.status == TaskStatus.COMPLETED for task in tasks):
                 raise InvalidStatusTransitionError("Projeto com tarefas concluídas não pode voltar para IN_PROGRESS.")
-            for task in tasks:
-                task.change_status(TaskStatus.IN_PROGRESS)
+            if not any(task.status == TaskStatus.IN_PROGRESS for task in tasks):
+                raise InvalidStatusTransitionError(
+                    "IN_PROGRESS é um status calculado a partir das tarefas. "
+                    "Inicie ao menos uma tarefa individualmente antes de definir o projeto como IN_PROGRESS."
+                )
         else:
             for task in tasks:
                 if task.status == TaskStatus.PENDING:
