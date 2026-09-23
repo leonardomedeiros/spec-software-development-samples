@@ -388,7 +388,13 @@ def web_update_task_view(request, task_id: str):
             from datetime import date
             due_date = None
             if due_date_str:
-                due_date = date.fromisoformat(due_date_str)
+                parsed_due_date = date.fromisoformat(due_date_str)
+                # Only treat as a change if it differs from the task's current
+                # due date; otherwise resubmitting an unchanged (possibly past)
+                # due date would fail the "must be future" validation on every edit.
+                current_due_date = task.due_date.date() if task.due_date else None
+                if parsed_due_date != current_due_date:
+                    due_date = parsed_due_date
 
             # Build DTO with None for empty fields (partial update)
             dto = UpdateTaskSchema(

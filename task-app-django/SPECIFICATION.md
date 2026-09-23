@@ -289,6 +289,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   * Suporta atualização parcial: apenas campos alterados são enviados
   * Campos deixados vazios não são atualizados
   * Campos vazios são convertidos para `None` (não atualizam o BD)
+  * `due_date` só é reenviado para validação/atualização se o valor no formulário for diferente da data já cadastrada na tarefa; se o campo permanecer igual (ex.: tarefa já vencida ou com vencimento hoje), ele é tratado como `None` (sem alteração) e não aciona a regra RN-02, evitando bloquear a edição de outros campos de tarefas com `due_date` no passado.
   * **Botão (lápis) disponível em TODAS as tarefas** (PENDING, IN_PROGRESS, COMPLETED)
   * **Permite reabertura**: Tarefas COMPLETED podem voltar para PENDING ou IN_PROGRESS
   * **Rastreamento de auditoria**: Cada alteração registrada em `task_history` com usuário, campo, valor anterior/novo, data/hora
@@ -492,7 +493,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ### 5.1 Regras de Negócio (RN)
 * **RN-01 (Validação de Título):** O título da tarefa deve conter entre 3 e 100 caracteres e não pode ser composto apenas por espaços em branco.
-* **RN-02 (Data de Vencimento Futura - Opcional):** A `due_date` é opcional na criação. Quando fornecida, deve obrigatoriamente ser posterior ao dia atual (só é aceito data futura, não o próprio dia). Pode ser atribuída posteriormente através da edição. Formato: `YYYY-MM-DD`.
+* **RN-02 (Data de Vencimento Futura - Opcional):** A `due_date` é opcional na criação. Quando fornecida (na criação, ou na edição com um valor diferente do já cadastrado), deve obrigatoriamente ser posterior ao dia atual (só é aceito data futura, não o próprio dia). Pode ser atribuída posteriormente através da edição. Formato: `YYYY-MM-DD`. Na edição, se o valor enviado for igual à `due_date` já existente na tarefa, ele é tratado como campo não alterado e a validação de data futura não é reaplicada — isso evita que a simples reabertura do modal de edição de uma tarefa com vencimento no passado impeça a atualização de outros campos.
 * **RN-03 (Valores Permitidos de Enums):**
   * `status`: Apenas `PENDING`, `IN_PROGRESS`, `COMPLETED`.
   * `priority`: Apenas `LOW`, `MEDIUM`, `HIGH`.
@@ -531,6 +532,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **CB-05 (Edição Parcial):** Ao editar uma tarefa, enviar apenas `title` e `due_date` deve atualizar apenas esses campos, mantendo os demais inalterados.
 * **CB-06 (Edição de Tarefa Inexistente):** Tentar editar uma tarefa com `task_id` inexistente deve retornar `404 Not Found` com mensagem `"Tarefa não encontrada"`.
 * **CB-07 (Exclusão de Tarefa Inexistente):** Tentar excluir uma tarefa com `task_id` inexistente deve retornar `404 Not Found` com mensagem `"Tarefa não encontrada"`.
+* **CB-08 (Edição de Tarefa com Vencimento já Vencido):** Editar via web (`POST /web/tasks/{task_id}`) qualquer campo (ex.: `title`) de uma tarefa cuja `due_date` já é hoje ou passada, reenviando essa mesma `due_date` inalterada (comportamento do formulário, que pré-preenche o campo), deve ser aceito normalmente (`302` redirect + mensagem de sucesso), sem disparar o erro de RN-02, pois o valor não mudou.
 * **CB-08 (Código de Requisito Duplicado):** Tentar criar ou editar um requisito para um `code` já usado por outro requisito deve retornar `400 Bad Request`.
 * **CB-09 (Vínculo com Requisito ou Tarefa Inexistente):** Tentar vincular/desvincular uma tarefa a um `requirement_id` inexistente, ou uma tarefa com `task_id` inexistente, deve retornar `404 Not Found`.
 
