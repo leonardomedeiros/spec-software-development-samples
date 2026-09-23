@@ -438,7 +438,7 @@
                             <p class="card-text text-muted small mb-2">{{ task.description }}</p>
                         {% endif %}
                         <div class="small text-muted mb-2">
-                            <div><i class="bi bi-calendar-event me-1"></i>Prazo: {{ task.due_date|date:"d/m/Y H:i" }}</div>
+                            <div><i class="bi bi-calendar-event me-1"></i>Prazo: {{ task.due_date|date:"d/m/Y" }}</div>
                             {% if task.assignee_id %}
                                 <div><i class="bi bi-person me-1"></i>Resp: {{ task.assignee_name|default:task.assignee_id }}</div>
                             {% endif %}
@@ -452,7 +452,7 @@
                                     Iniciar <i class="bi bi-arrow-right ms-1"></i>
                                 </button>
                             </form>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-d' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="d-inline">
@@ -490,7 +490,7 @@
                             <p class="card-text text-muted small mb-2">{{ task.description }}</p>
                         {% endif %}
                         <div class="small text-muted mb-2">
-                            <div><i class="bi bi-calendar-event me-1"></i>Prazo: {{ task.due_date|date:"d/m/Y H:i" }}</div>
+                            <div><i class="bi bi-calendar-event me-1"></i>Prazo: {{ task.due_date|date:"d/m/Y" }}</div>
                             {% if task.assignee_id %}
                                 <div><i class="bi bi-person me-1"></i>Resp: {{ task.assignee_name|default:task.assignee_id }}</div>
                             {% endif %}
@@ -513,7 +513,7 @@
                             </form>
                         </div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-d' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
                                 <i class="bi bi-pencil me-1"></i> Editar
                             </button>
                             <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1">
@@ -558,7 +558,7 @@
                         </div>
                         <hr class="my-2 text-muted">
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-dTH:i' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
+                            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditTask" data-task-id="{{ task.id }}" data-task-title="{{ task.title|escapejs }}" data-task-description="{{ task.description|escapejs }}" data-task-priority="{{ task.priority.value }}" data-task-assignee="{{ task.assignee_id }}" data-task-due-date="{{ task.due_date|date:'Y-m-d' }}" data-task-github-url="{{ task.github_url|default:'' }}" title="Editar tarefa">
                                 <i class="bi bi-pencil me-1"></i> Editar
                             </button>
                             <form method="POST" action="/web/tasks/{{ task.id }}/delete" class="flex-grow-1">
