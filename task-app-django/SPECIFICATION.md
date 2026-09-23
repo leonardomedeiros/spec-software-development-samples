@@ -168,6 +168,26 @@ CREATE TABLE task_history (
     new_value TEXT, -- Novo valor do campo
     changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Tabela de Requisitos
+CREATE TABLE requirements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code VARCHAR(20) UNIQUE NOT NULL, -- código único, ex: 'RF-01'
+    title VARCHAR(150) NOT NULL,
+    description TEXT,
+    req_type VARCHAR(25) NOT NULL DEFAULT 'FUNCTIONAL', -- 'FUNCTIONAL', 'NON_FUNCTIONAL', 'BUSINESS_RULE', 'TECHNICAL_CONSTRAINT'
+    priority VARCHAR(10) NOT NULL DEFAULT 'MEDIUM', -- 'LOW', 'MEDIUM', 'HIGH'
+    status VARCHAR(15) NOT NULL DEFAULT 'DRAFT', -- 'DRAFT', 'APPROVED', 'IMPLEMENTED', 'DEPRECATED'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+  -- Vínculo N:N entre requisitos e tarefas
+  CREATE TABLE requirement_task_links (
+    requirement_id UUID NOT NULL REFERENCES requirements(id) ON DELETE CASCADE,
+    task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    linked_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (requirement_id, task_id)
+  );
 ```
 
 ### 2.2 Relacionamentos
@@ -193,6 +213,15 @@ CREATE TABLE task_history (
 * O dashboard e as ações web devem exigir usuário autenticado; endpoints REST permanecem independentes da sessão web.
 * Para inicializar uma base sem usuários, disponibilizar o comando:
   `python manage.py create_tasktrack_user --name "Nome" --email usuario@exemplo.com --password "senha-segura" --role MANAGER`.
+
+### 2.6 Requisitos e Vínculo com Tarefas
+
+* Um Requisito é uma entidade independente (`code`, `title`, `description` em Markdown, `type`, `priority`, `status`) que pode ser vinculado a uma ou mais Tarefas, e uma Tarefa pode atender a vários Requisitos (N:N), por meio da tabela `requirement_task_links`.
+* O campo `code` é único em todo o sistema (ex: `RF-01`, `RNF-02`); tentar cadastrar ou editar um requisito para um código já utilizado é rejeitado.
+* `type` aceita `FUNCTIONAL`, `NON_FUNCTIONAL`, `BUSINESS_RULE` ou `TECHNICAL_CONSTRAINT`. `priority` aceita `LOW`, `MEDIUM` ou `HIGH`.
+* `status` é um campo próprio do requisito (não é calculado a partir das tarefas vinculadas, ao contrário do status do Projeto — ver seção 2.3), com transições: `DRAFT -> {APPROVED, DEPRECATED}`, `APPROVED -> {IMPLEMENTED, DRAFT, DEPRECATED}`, `IMPLEMENTED -> {APPROVED, DEPRECATED}`. `DEPRECATED` é um estado final e não pode retornar para outro status.
+* A combinação `requirement_id` + `task_id` é única; vincular uma tarefa já vinculada não cria duplicidade. Ao excluir um requisito ou uma tarefa, os vínculos correspondentes são removidos em cascata.
+* Os requisitos cadastrados podem ser exportados/refletidos no próprio `SPECIFICATION.md` (ver seção 7).
 
 ### 2.3 Status de Contratos e Projetos
 
@@ -274,6 +303,12 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Cadastrar Usuário:** `POST /web/users` (Campos: `name`, `email`, `password`, `password_confirmation`, `role`).
 * **Entrar:** `POST /login` (Campos: `username` com o e-mail e `password`).
 * **Sair:** `GET /logout`.
+* **Cadastrar Requisito:** `POST /web/requirements` (Campos: `code`, `title`, `description`, `type`, `priority`).
+* **Editar Requisito:** `POST /web/requirements/{requirement_id}` (Campos opcionais: `code`, `title`, `description`, `type`, `priority` — atualização parcial, igual à edição de tarefa).
+* **Alterar status do Requisito:** `POST /web/requirements/{requirement_id}/status` (Campo: `status`, conforme transições da seção 2.6).
+* **Vincular/Desvincular Tarefa ao Requisito:** `POST /web/requirements/{requirement_id}/tasks` (Campos: `action` com `add` ou `remove`, e `task_id`).
+* **Excluir Requisito:** `POST /web/requirements/{requirement_id}/delete` (Sem campos).
+* **Exportar Requisitos para SPECIFICATION.md:** `POST /web/specification/export` (Sem campos). Regenera apenas o bloco gerado automaticamente da seção 7 (Requisitos Rastreáveis), preservando o restante do documento.
 
 ---
 
@@ -427,6 +462,32 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ---
 
+### 4.7 Requisitos (Requirements)
+* **Listar / Criar:** `GET /api/v1/requirements` (lista todos) e `POST /api/v1/requirements`
+* **Request Body (criação):**
+```json
+{
+  "code": "RF-01",
+  "title": "Autenticação de Usuários",
+  "description": "O sistema deve permitir login via e-mail e senha.",
+  "type": "FUNCTIONAL",
+  "priority": "HIGH"
+}
+```
+* **Respostas (criação):**
+  * `201 Created`: Retorna o objeto completo do requisito criado.
+  * `400 Bad Request`: Código já utilizado por outro requisito.
+  * `422 Unprocessable Entity`: Dados de entrada inválidos.
+* **Editar / Excluir:** `PUT`/`PATCH /api/v1/requirements/{requirement_id}` (campos opcionais, mesmo padrão da edição de tarefa) e `DELETE /api/v1/requirements/{requirement_id}`.
+  * `200 OK` / `204 No Content` em caso de sucesso; `404 Not Found` se o requisito não existir.
+* **Alterar Status:** `PATCH /api/v1/requirements/{requirement_id}/status` com `{"status": "APPROVED"}` (transições conforme seção 2.6).
+  * `400 Bad Request` com `"INVALID_STATUS_TRANSITION"` se a transição não for permitida.
+* **Vincular/Desvincular Tarefa:** `POST /api/v1/requirements/{requirement_id}/tasks` com `{"task_id": "...", "action": "add"}` (ou `"remove"`).
+  * `200 OK`: Retorna `{"linked_task_ids": [...]}` com o estado atual do vínculo.
+  * `404 Not Found`: Requisito ou tarefa não encontrados.
+
+---
+
 ## 5. Regras de Negócio e Casos de Borda
 
 ### 5.1 Regras de Negócio (RN)
@@ -459,15 +520,19 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   * Renderização: Cliente responsável por renderizar Markdown em exibição (se necessário)
   * UI: Campos textarea expandidos com `min-height: 400px` (~20 linhas) | Redimensionáveis verticalmente | Dicas de formatação
   * Experiência: Editor tem ampla visão das descrições para documenta completamente (contratos, projetos, tarefas)
+* **RN-08 (Código Único de Requisito):** O campo `code` de um Requisito é único em todo o sistema; criar ou editar um requisito para um `code` já usado por outro requisito deve ser rejeitado.
+* **RN-09 (Ciclo de Vida do Status do Requisito):** Transições permitidas: `DRAFT ➔ APPROVED`, `DRAFT ➔ DEPRECATED`, `APPROVED ➔ IMPLEMENTED`, `APPROVED ➔ DRAFT`, `APPROVED ➔ DEPRECATED`, `IMPLEMENTED ➔ APPROVED`, `IMPLEMENTED ➔ DEPRECATED`. `DEPRECATED` é um estado final (não retorna a outro status). Ao contrário do status do Projeto, o status do Requisito **não** é calculado a partir das tarefas vinculadas.
 
 ### 5.2 Casos de Borda (CB)
 * **CB-01 (Projeto Inexistente):** Tentar criar uma tarefa enviando um `project_id` inexistente deve retornar `404 Not Found` com mensagem `"Projeto não encontrado"`.
 * **CB-02 (Data no Passado):** Enviar `due_date = "2020-01-01"` deve ser interceptado pelo Pydantic e retornar `422 Unprocessable Entity` com mensagem `"A data de vencimento não pode ser no passado."`.
-* **CB-03 (Reabertura Inválida):** Tentar alterar o status de `COMPLETED` para `IN_PROGRESS` deve retornar `400 Bad Request` com código de erro de domínio `"INVALID_STATUS_TRANSITION"`.
+* **CB-03 (Reabertura de Tarefa Concluída):** Alterar o status de uma tarefa `COMPLETED` para `PENDING` ou `IN_PROGRESS` é uma operação válida (reabertura, RN-04) e deve retornar `200 OK` com o novo status, não um erro.
 * **CB-04 (Usuário Inexistente):** Informar um `assignee_id` não cadastrado deve retornar `404 Not Found` com a mensagem `"Usuário atribuído não existe"`.
 * **CB-05 (Edição Parcial):** Ao editar uma tarefa, enviar apenas `title` e `due_date` deve atualizar apenas esses campos, mantendo os demais inalterados.
 * **CB-06 (Edição de Tarefa Inexistente):** Tentar editar uma tarefa com `task_id` inexistente deve retornar `404 Not Found` com mensagem `"Tarefa não encontrada"`.
 * **CB-07 (Exclusão de Tarefa Inexistente):** Tentar excluir uma tarefa com `task_id` inexistente deve retornar `404 Not Found` com mensagem `"Tarefa não encontrada"`.
+* **CB-08 (Código de Requisito Duplicado):** Tentar criar ou editar um requisito para um `code` já usado por outro requisito deve retornar `400 Bad Request`.
+* **CB-09 (Vínculo com Requisito ou Tarefa Inexistente):** Tentar vincular/desvincular uma tarefa a um `requirement_id` inexistente, ou uma tarefa com `task_id` inexistente, deve retornar `404 Not Found`.
 
 ---
 
@@ -522,16 +587,31 @@ Estes cenários devem orientar a geração de testes automatizados com `pytest` 
   }
   ```
 
-### Cenário 4: Transição Inválida de Status
+### Cenário 4: Reabertura de Tarefa Concluída
 * **Dado** uma tarefa salva no banco com status `COMPLETED`
 * **Quando** for enviada uma requisição `PATCH` para `/api/v1/tasks/{task_id}/status` com `{"status": "IN_PROGRESS"}`
-* **Então** o status HTTP deve ser `400 Bad Request`
-* **E** o corpo da resposta deve conter:
-  ```json
-  {
-    "error": "INVALID_STATUS_TRANSITION",
-    "message": "Tarefas concluídas não podem ter seu status alterado."
-  }
-  ```
+* **Então** o status HTTP deve ser `200 OK` (reabertura permitida, RN-04)
+* **E** o corpo da resposta deve conter `"status": "IN_PROGRESS"`
 
+---
+
+## 7. Requisitos Rastreáveis (Requirements)
+
+Esta seção mantém a rastreabilidade entre os **Requisitos** cadastrados (ver seção 2.6) e as **Tarefas**
+que os implementam. Cada Requisito tem um código único (`code`), título, descrição em Markdown, tipo
+(`FUNCTIONAL`/`NON_FUNCTIONAL`/`BUSINESS_RULE`/`TECHNICAL_CONSTRAINT`), prioridade (`LOW`/`MEDIUM`/`HIGH`)
+e um status próprio (`DRAFT`/`APPROVED`/`IMPLEMENTED`/`DEPRECATED`), e pode estar vinculado a uma ou mais
+tarefas.
+
+O bloco abaixo, delimitado pelos marcadores `REQUISITOS:START`/`REQUISITOS:END`, é **gerado
+automaticamente** — não deve ser editado manualmente. Para regenerá-lo a partir dos dados atuais:
+* Pelo dashboard: clique em **"Exportar SPECIFICATION.md"**.
+* Pela linha de comando: `python manage.py export_specification`.
+
+Qualquer uma das duas opções substitui apenas o conteúdo entre os marcadores, preservando o restante
+deste documento.
+
+<!-- REQUISITOS:START -->
+_Nenhum requisito cadastrado ainda. Use o dashboard ou `export_specification` para gerar esta seção._
+<!-- REQUISITOS:END -->
 

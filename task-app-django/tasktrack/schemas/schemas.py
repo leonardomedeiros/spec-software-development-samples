@@ -3,7 +3,15 @@ from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
-from ..domain.enums import ContractStatus, ProjectStatus, TaskPriority, TaskStatus
+from ..domain.enums import (
+    ContractStatus,
+    ProjectStatus,
+    RequirementPriority,
+    RequirementStatus,
+    RequirementType,
+    TaskPriority,
+    TaskStatus,
+)
 
 
 class ContractResponseSchema(BaseModel):
@@ -145,3 +153,68 @@ class TaskResponseSchema(BaseModel):
     due_date: datetime
     created_at: datetime
     updated_at: datetime
+
+
+class CreateRequirementSchema(BaseModel):
+    code: str = Field(..., min_length=2, max_length=20)
+    title: str = Field(..., min_length=3, max_length=150)
+    description: Optional[str] = None
+    type: RequirementType
+    priority: RequirementPriority = RequirementPriority.MEDIUM
+
+    @field_validator("code")
+    @classmethod
+    def validate_code_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("O código do requisito não pode ser composto apenas por espaços em branco.")
+        return v.strip()
+
+    @field_validator("title")
+    @classmethod
+    def validate_requirement_title(cls, v: str) -> str:
+        clean_val = v.strip()
+        if len(clean_val) < 3:
+            raise ValueError("O título do requisito deve conter no mínimo 3 caracteres válidos.")
+        return clean_val
+
+
+class UpdateRequirementSchema(BaseModel):
+    code: Optional[str] = Field(None, min_length=2, max_length=20)
+    title: Optional[str] = Field(None, min_length=3, max_length=150)
+    description: Optional[str] = None
+    type: Optional[RequirementType] = None
+    priority: Optional[RequirementPriority] = None
+
+    @field_validator("code")
+    @classmethod
+    def validate_code_not_blank(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not v.strip():
+            raise ValueError("O código do requisito não pode ser composto apenas por espaços em branco.")
+        return v.strip()
+
+    @field_validator("title")
+    @classmethod
+    def validate_requirement_title(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        clean_val = v.strip()
+        if len(clean_val) < 3:
+            raise ValueError("O título do requisito deve conter no mínimo 3 caracteres válidos.")
+        return clean_val
+
+
+class UpdateRequirementStatusSchema(BaseModel):
+    status: RequirementStatus
+
+
+class RequirementResponseSchema(BaseModel):
+    id: UUID
+    code: str
+    title: str
+    description: Optional[str] = None
+    type: RequirementType
+    priority: RequirementPriority
+    status: RequirementStatus
+    created_at: datetime

@@ -1,22 +1,33 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from ..domain.entities import Contract, Project, Task
+from ..domain.entities import Contract, Project, Requirement, Task
 from ..domain.enums import ContractStatus, ProjectStatus, TaskStatus
 from ..domain.exceptions import (
     ContractNotFoundError,
     InvalidStatusTransitionError,
     ProjectNotFoundError,
+    RequirementCodeAlreadyExistsError,
+    RequirementNotFoundError,
     TaskNotFoundError,
     UserNotFoundError,
 )
-from ..domain.repositories import IContractRepository, IProjectRepository, ITaskRepository, IUserRepository
+from ..domain.repositories import (
+    IContractRepository,
+    IProjectRepository,
+    IRequirementRepository,
+    ITaskRepository,
+    IUserRepository,
+)
 from ..schemas.schemas import (
     CreateContractSchema,
     CreateProjectSchema,
+    CreateRequirementSchema,
     CreateTaskSchema,
     UpdateContractStatusSchema,
     UpdateProjectStatusSchema,
+    UpdateRequirementSchema,
+    UpdateRequirementStatusSchema,
     UpdateTaskStatusSchema,
 )
 
@@ -229,3 +240,94 @@ class DeleteTaskUseCase:
         if not task:
             raise TaskNotFoundError("Tarefa não encontrada")
         self.task_repo.delete(task_id)
+
+
+class CreateRequirementUseCase:
+    def __init__(self, requirement_repo: IRequirementRepository):
+        self.requirement_repo = requirement_repo
+
+    def execute(self, dto: CreateRequirementSchema) -> Requirement:
+        if any(r.code == dto.code for r in self.requirement_repo.list_all()):
+            raise RequirementCodeAlreadyExistsError(f"Já existe um requisito com o código '{dto.code}'.")
+
+        requirement = Requirement(
+            id=uuid4(),
+            code=dto.code,
+            title=dto.title,
+            description=dto.description or "",
+            type=dto.type,
+            priority=dto.priority,
+            created_at=datetime.now(timezone.utc),
+        )
+        return self.requirement_repo.save(requirement)
+
+
+class UpdateRequirementUseCase:
+    def __init__(self, requirement_repo: IRequirementRepository):
+        self.requirement_repo = requirement_repo
+
+    def execute(self, requirement_id: UUID, dto: UpdateRequirementSchema) -> Requirement:
+        requirement = self.requirement_repo.get_by_id(requirement_id)
+        if not requirement:
+            raise RequirementNotFoundError()
+
+        if dto.code is not None and dto.code != requirement.code:
+            if any(r.code == dto.code for r in self.requirement_repo.list_all()):
+                raise RequirementCodeAlreadyExistsError(f"Já existe um requisito com o código '{dto.code}'.")
+            requirement.code = dto.code
+        if dto.title is not None:
+            requirement.title = dto.title
+        if dto.description is not None:
+            requirement.description = dto.description
+        if dto.type is not None:
+            requirement.type = dto.type
+        if dto.priority is not None:
+            requirement.priority = dto.priority
+
+        return self.requirement_repo.save(requirement)
+
+
+class UpdateRequirementStatusUseCase:
+    def __init__(self, requirement_repo: IRequirementRepository):
+        self.requirement_repo = requirement_repo
+
+    def execute(self, requirement_id: UUID, dto: UpdateRequirementStatusSchema) -> Requirement:
+        requirement = self.requirement_repo.get_by_id(requirement_id)
+        if not requirement:
+            raise RequirementNotFoundError()
+        requirement.change_status(dto.status)
+        return self.requirement_repo.save(requirement)
+
+
+class DeleteRequirementUseCase:
+    def __init__(self, requirement_repo: IRequirementRepository):
+        self.requirement_repo = requirement_repo
+
+    def execute(self, requirement_id: UUID) -> None:
+        requirement = self.requirement_repo.get_by_id(requirement_id)
+        if not requirement:
+            raise RequirementNotFoundError()
+        self.requirement_repo.delete(requirement_id)
+
+
+class LinkRequirementToTaskUseCase:
+    def __init__(self, requirement_repo: IRequirementRepository, task_repo: ITaskRepository):
+        self.requirement_repo = requirement_repo
+        self.task_repo = task_repo
+
+    def execute(self, requirement_id: UUID, task_id: UUID) -> None:
+        if not self.requirement_repo.get_by_id(requirement_id):
+            raise RequirementNotFoundError()
+        if not self.task_repo.get_by_id(task_id):
+            raise TaskNotFoundError("Tarefa não encontrada")
+        self.requirement_repo.link_task(requirement_id, task_id)
+
+
+class UnlinkRequirementFromTaskUseCase:
+    def __init__(self, requirement_repo: IRequirementRepository):
+        self.requirement_repo = requirement_repo
+
+    def execute(self, requirement_id: UUID, task_id: UUID) -> None:
+        if not self.requirement_repo.get_by_id(requirement_id):
+            raise RequirementNotFoundError()
+        self.requirement_repo.unlink_task(requirement_id, task_id)

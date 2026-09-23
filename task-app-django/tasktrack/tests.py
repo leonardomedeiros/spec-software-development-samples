@@ -2,35 +2,54 @@ import shutil
 import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from django.contrib.auth.models import User as AuthUser
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 import pytest
 
-from tasktrack.domain.entities import Contract, Project, Task, User
-from tasktrack.domain.enums import ContractStatus, TaskPriority, TaskStatus, UserRole
+from tasktrack.domain.entities import Contract, Project, Requirement, Task, User
+from tasktrack.domain.enums import (
+    ContractStatus,
+    RequirementPriority,
+    RequirementStatus,
+    RequirementType,
+    TaskPriority,
+    TaskStatus,
+    UserRole,
+)
 from tasktrack.domain.exceptions import (
     InvalidStatusTransitionError,
     ProjectNotFoundError,
+    RequirementCodeAlreadyExistsError,
+    RequirementNotFoundError,
     TaskNotFoundError,
     UserNotFoundError,
 )
 from tasktrack.schemas.schemas import (
     CreateContractSchema,
     CreateProjectSchema,
+    CreateRequirementSchema,
     CreateTaskSchema,
+    UpdateRequirementSchema,
     UpdateTaskStatusSchema,
 )
 from tasktrack.use_cases.use_cases import (
     CreateContractUseCase,
     CreateProjectUseCase,
+    CreateRequirementUseCase,
     CreateTaskUseCase,
+    LinkRequirementToTaskUseCase,
+    UnlinkRequirementFromTaskUseCase,
+    UpdateRequirementUseCase,
     UpdateTaskStatusUseCase,
 )
+from tasktrack.use_cases.specification_export import END_MARKER, START_MARKER, export_requirements_section
 from tasktrack.infra.repositories import (
     DjangoContractRepository,
     DjangoProjectRepository,
+    DjangoRequirementRepository,
     DjangoTaskRepository,
     DjangoUserRepository,
 )
@@ -43,6 +62,7 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         self.project_repo = DjangoProjectRepository()
         self.task_repo = DjangoTaskRepository()
         self.contract_repo = DjangoContractRepository()
+        self.requirement_repo = DjangoRequirementRepository()
 
         self.media_root = tempfile.mkdtemp()
         self.override_media = override_settings(MEDIA_ROOT=self.media_root)
@@ -79,6 +99,17 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
             )
         )
 
+        # Cria tarefa base vinculada ao projeto (usada nos testes de vínculo com requisitos)
+        self.task = self.task_repo.save(
+            Task(
+                id=uuid.UUID("c2e5c42f-7b9d-4e0a-8f2c-1a3b4c5d6e7f"),
+                project_id=self.project.id,
+                title="Implementar Login",
+                status=TaskStatus.PENDING,
+                priority=TaskPriority.MEDIUM,
+            )
+        )
+
         # Usuário de autenticação (views web exigem login_required)
         self.auth_user = AuthUser.objects.create_user(
             username=self.user.email,
@@ -95,7 +126,7 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
     # DOMAIN UNIT TESTS
     # -------------------------------------------------------------
     def test_rn04_status_lifecycle_transitions(self):
-        """RN-04: Testa transições válidas e proibição de transição após COMPLETED."""
+        """RN-04: Testa transições válidas, incluindo reabertura de tarefas COMPLETED."""
         task = Task(title="Test Lifecycle", status=TaskStatus.PENDING)
 
         # PENDING -> IN_PROGRESS (Válido)
@@ -111,20 +142,21 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         task.change_status(TaskStatus.COMPLETED)
         self.assertEqual(task.status, TaskStatus.COMPLETED)
 
-        # COMPLETED -> IN_PROGRESS (Proibido - CB-03)
-        with self.assertRaises(InvalidStatusTransitionError):
-            task.change_status(TaskStatus.IN_PROGRESS)
+        # COMPLETED -> IN_PROGRESS (Reabertura permitida, RN-04)
+        task.change_status(TaskStatus.IN_PROGRESS)
+        self.assertEqual(task.status, TaskStatus.IN_PROGRESS)
 
-        # COMPLETED -> PENDING (Proibido)
-        with self.assertRaises(InvalidStatusTransitionError):
-            task.change_status(TaskStatus.PENDING)
+        # COMPLETED -> PENDING (Reabertura permitida, RN-04)
+        task.change_status(TaskStatus.COMPLETED)
+        task.change_status(TaskStatus.PENDING)
+        self.assertEqual(task.status, TaskStatus.PENDING)
 
     # -------------------------------------------------------------
     # USE CASE / SPECIFICATION ACCEPTANCE CRITERIA
     # -------------------------------------------------------------
     def test_scenario_1_create_task_success(self):
         """Cenário 1: Sucesso na Criação de Tarefa (Spec 5.1)."""
-        future_date = datetime.now(timezone.utc) + timedelta(days=10)
+        future_date = (datetime.now(timezone.utc) + timedelta(days=10)).date()
         dto = CreateTaskSchema(
             title="Criar Testes de Integração",
             description="Cobrir casos felizes e de erro.",
@@ -149,9 +181,13 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
             )
         self.assertIn("A data de vencimento não pode ser no passado.", str(context.exception))
 
-    def test_scenario_3_invalid_status_transition_on_completed(self):
-        """Cenário 3: Transição Inválida de Status (CB-03 / Spec 5.3)."""
-        future_date = datetime.now(timezone.utc) + timedelta(days=5)
+    def test_scenario_3_reabertura_completed_to_in_progress(self):
+        """Cenário 3: Reabertura de Tarefa Concluída (CB-03 / Spec 5.3).
+
+        RN-04 permite reabrir tarefas COMPLETED (commit 146acdb removeu a antiga
+        restrição que bloqueava COMPLETED -> IN_PROGRESS/PENDING).
+        """
+        future_date = (datetime.now(timezone.utc) + timedelta(days=5)).date()
         task = self.task_repo.save(
             Task(
                 project_id=self.project.id,
@@ -164,15 +200,12 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         use_case = UpdateTaskStatusUseCase(self.task_repo)
         dto = UpdateTaskStatusSchema(status=TaskStatus.IN_PROGRESS)
 
-        with self.assertRaises(InvalidStatusTransitionError) as context:
-            use_case.execute(task.id, dto)
-
-        self.assertEqual(context.exception.code, "INVALID_STATUS_TRANSITION")
-        self.assertIn("Tarefas concluídas não podem ter seu status alterado.", context.exception.message)
+        updated_task = use_case.execute(task.id, dto)
+        self.assertEqual(updated_task.status, TaskStatus.IN_PROGRESS)
 
     def test_cb01_project_not_found(self):
         """CB-01: Projeto Inexistente ao criar tarefa."""
-        future_date = datetime.now(timezone.utc) + timedelta(days=5)
+        future_date = (datetime.now(timezone.utc) + timedelta(days=5)).date()
         dto = CreateTaskSchema(
             title="Tarefa com projeto inválido",
             due_date=future_date,
@@ -185,7 +218,7 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
 
     def test_cb04_assignee_not_found(self):
         """CB-04 / RN-05: Usuário atribuído inexistente."""
-        future_date = datetime.now(timezone.utc) + timedelta(days=5)
+        future_date = (datetime.now(timezone.utc) + timedelta(days=5)).date()
         non_existent_user = uuid.uuid4()
         dto = CreateTaskSchema(
             title="Tarefa com assignee inexistente",
@@ -207,7 +240,7 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
             "description": "Integrar API da Zoop para checkout transparente.",
             "priority": "HIGH",
             "assignee_id": str(self.user.id),
-            "due_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+            "due_date": (datetime.now(timezone.utc) + timedelta(days=30)).date().isoformat(),
         }
         response = self.client.post(
             f"/api/v1/projects/{self.project.id}/tasks",
@@ -378,3 +411,137 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
             {"status": "IN_PROGRESS"},
         )
         self.assertEqual(response.status_code, 302)
+
+    # -------------------------------------------------------------
+    # REQUIREMENTS (Gestão de Requisitos)
+    # -------------------------------------------------------------
+    def test_requirement_change_status_transitions(self):
+        """Domínio: transições válidas e proibição de transição a partir de DEPRECATED."""
+        requirement = Requirement(title="Autenticação", code="RF-01", status=RequirementStatus.DRAFT)
+
+        requirement.change_status(RequirementStatus.APPROVED)
+        self.assertEqual(requirement.status, RequirementStatus.APPROVED)
+
+        requirement.change_status(RequirementStatus.IMPLEMENTED)
+        self.assertEqual(requirement.status, RequirementStatus.IMPLEMENTED)
+
+        requirement.change_status(RequirementStatus.DEPRECATED)
+        self.assertEqual(requirement.status, RequirementStatus.DEPRECATED)
+
+        with self.assertRaises(InvalidStatusTransitionError):
+            requirement.change_status(RequirementStatus.APPROVED)
+
+    def test_create_requirement_use_case_success(self):
+        dto = CreateRequirementSchema(
+            code="RF-01",
+            title="Autenticação de Usuários",
+            description="O sistema deve permitir login via e-mail e senha.",
+            type=RequirementType.FUNCTIONAL,
+            priority=RequirementPriority.HIGH,
+        )
+        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+        self.assertEqual(requirement.code, "RF-01")
+        self.assertEqual(requirement.status, RequirementStatus.DRAFT)
+
+    def test_create_requirement_duplicate_code_rejected(self):
+        dto = CreateRequirementSchema(code="RF-01", title="Primeiro Requisito", type=RequirementType.FUNCTIONAL)
+        CreateRequirementUseCase(self.requirement_repo).execute(dto)
+
+        dto_duplicado = CreateRequirementSchema(code="RF-01", title="Segundo Requisito", type=RequirementType.FUNCTIONAL)
+        with self.assertRaises(RequirementCodeAlreadyExistsError):
+            CreateRequirementUseCase(self.requirement_repo).execute(dto_duplicado)
+
+    def test_update_requirement_partial(self):
+        dto = CreateRequirementSchema(code="RF-01", title="Título Original", type=RequirementType.FUNCTIONAL)
+        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+
+        updated = UpdateRequirementUseCase(self.requirement_repo).execute(
+            requirement.id, UpdateRequirementSchema(title="Título Atualizado")
+        )
+        self.assertEqual(updated.title, "Título Atualizado")
+        self.assertEqual(updated.code, "RF-01")
+
+    def test_link_and_unlink_requirement_to_task(self):
+        dto = CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+
+        LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(requirement.id, self.task.id)
+        linked = self.requirement_repo.list_linked_tasks(requirement.id)
+        self.assertEqual([t.id for t in linked], [self.task.id])
+
+        UnlinkRequirementFromTaskUseCase(self.requirement_repo).execute(requirement.id, self.task.id)
+        self.assertEqual(self.requirement_repo.list_linked_tasks(requirement.id), [])
+
+    def test_link_requirement_task_not_found(self):
+        dto = CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+
+        with self.assertRaises(TaskNotFoundError):
+            LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(requirement.id, uuid.uuid4())
+
+    def test_link_task_requirement_not_found(self):
+        with self.assertRaises(RequirementNotFoundError):
+            LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(uuid.uuid4(), self.task.id)
+
+    def test_web_create_requirement_success(self):
+        response = self.client.post(
+            "/web/requirements",
+            {"code": "RF-01", "title": "Autenticação de Usuários", "type": "FUNCTIONAL", "priority": "HIGH"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(self.requirement_repo.list_all()), 1)
+
+    def test_web_link_task_to_requirement(self):
+        dto = CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+
+        response = self.client.post(
+            f"/web/requirements/{requirement.id}/tasks",
+            {"action": "add", "task_id": str(self.task.id)},
+        )
+        self.assertEqual(response.status_code, 302)
+        linked = self.requirement_repo.list_linked_tasks(requirement.id)
+        self.assertEqual([t.id for t in linked], [self.task.id])
+
+    def test_api_create_requirement_endpoint(self):
+        response = self.client.post(
+            "/api/v1/requirements",
+            data={"code": "RF-01", "title": "Autenticação de Usuários", "type": "FUNCTIONAL"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["code"], "RF-01")
+
+    def test_api_create_requirement_duplicate_code(self):
+        dto = CreateRequirementSchema(code="RF-01", title="Primeiro", type=RequirementType.FUNCTIONAL)
+        CreateRequirementUseCase(self.requirement_repo).execute(dto)
+
+        response = self.client.post(
+            "/api/v1/requirements",
+            data={"code": "RF-01", "title": "Segundo", "type": "FUNCTIONAL"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_export_requirements_section_updates_only_delimited_block(self):
+        """Exportação regenera apenas o bloco entre os marcadores, preservando o resto do arquivo."""
+        spec_content = (
+            f"# Título\n\nAntes.\n\n{START_MARKER}\nplaceholder\n{END_MARKER}\n\nDepois.\n"
+        )
+        spec_dir = tempfile.mkdtemp()
+        spec_path = Path(spec_dir) / "SPECIFICATION.md"
+        spec_path.write_text(spec_content, encoding="utf-8")
+
+        dto = CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+        LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(requirement.id, self.task.id)
+
+        export_requirements_section(self.requirement_repo, self.task_repo, spec_path)
+
+        new_content = spec_path.read_text(encoding="utf-8")
+        self.assertIn("Antes.", new_content)
+        self.assertIn("Depois.", new_content)
+        self.assertIn("RF-01", new_content)
+        self.assertIn(self.task.title, new_content)
+        self.assertNotIn("placeholder", new_content)
+        shutil.rmtree(spec_dir, ignore_errors=True)

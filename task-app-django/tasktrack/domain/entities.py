@@ -3,7 +3,15 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID, uuid4
 
-from .enums import ContractStatus, TaskPriority, TaskStatus, UserRole
+from .enums import (
+    ContractStatus,
+    RequirementPriority,
+    RequirementStatus,
+    RequirementType,
+    TaskPriority,
+    TaskStatus,
+    UserRole,
+)
 from .exceptions import InvalidStatusTransitionError
 
 
@@ -78,6 +86,35 @@ class Task:
         if new_status != self.status:
             self.status = new_status
             self.updated_at = datetime.now()
+
+
+@dataclass
+class Requirement:
+    id: UUID = field(default_factory=uuid4)
+    code: str = ""
+    title: str = ""
+    description: str = ""
+    type: RequirementType = RequirementType.FUNCTIONAL
+    priority: RequirementPriority = RequirementPriority.MEDIUM
+    status: RequirementStatus = RequirementStatus.DRAFT
+    created_at: Optional[datetime] = None
+
+    def change_status(self, new_status: RequirementStatus) -> None:
+        allowed_transitions = {
+            RequirementStatus.DRAFT: [RequirementStatus.APPROVED, RequirementStatus.DEPRECATED],
+            RequirementStatus.APPROVED: [
+                RequirementStatus.IMPLEMENTED,
+                RequirementStatus.DRAFT,
+                RequirementStatus.DEPRECATED,
+            ],
+            RequirementStatus.IMPLEMENTED: [RequirementStatus.APPROVED, RequirementStatus.DEPRECATED],
+            RequirementStatus.DEPRECATED: [],
+        }
+        if new_status != self.status and new_status not in allowed_transitions[self.status]:
+            raise InvalidStatusTransitionError(
+                f"Transição inválida de {self.status.value} para {new_status.value}."
+            )
+        self.status = new_status
 
 
 @dataclass

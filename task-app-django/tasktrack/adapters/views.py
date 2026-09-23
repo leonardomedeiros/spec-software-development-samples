@@ -16,17 +16,28 @@ from django.views.decorators.csrf import csrf_exempt
 from pydantic import ValidationError
 
 from ..domain.entities import User
-from ..domain.enums import ContractStatus, ProjectStatus, TaskPriority, TaskStatus, UserRole
+from ..domain.enums import (
+    ContractStatus,
+    ProjectStatus,
+    RequirementPriority,
+    RequirementStatus,
+    RequirementType,
+    TaskPriority,
+    TaskStatus,
+    UserRole,
+)
 from ..domain.exceptions import (
     DomainError,
     InvalidStatusTransitionError,
     ProjectNotFoundError,
+    RequirementNotFoundError,
     TaskNotFoundError,
     UserNotFoundError,
 )
 from ..infra.repositories import (
     DjangoContractRepository,
     DjangoProjectRepository,
+    DjangoRequirementRepository,
     DjangoTaskRepository,
     DjangoUserRepository,
 )
@@ -34,22 +45,33 @@ from ..schemas.schemas import (
     ContractResponseSchema,
     CreateContractSchema,
     CreateProjectSchema,
+    CreateRequirementSchema,
     CreateTaskSchema,
     ProjectResponseSchema,
+    RequirementResponseSchema,
     TaskResponseSchema,
     UpdateContractStatusSchema,
     UpdateProjectStatusSchema,
+    UpdateRequirementSchema,
+    UpdateRequirementStatusSchema,
     UpdateTaskStatusSchema,
     UpdateTaskSchema,
 )
+from ..use_cases.specification_export import export_requirements_section
 from ..use_cases.use_cases import (
     CreateContractUseCase,
     CreateProjectUseCase,
+    CreateRequirementUseCase,
     CreateTaskUseCase,
     AddProjectTeamMemberUseCase,
+    DeleteRequirementUseCase,
+    LinkRequirementToTaskUseCase,
     RemoveProjectTeamMemberUseCase,
+    UnlinkRequirementFromTaskUseCase,
     UpdateContractStatusUseCase,
     UpdateProjectStatusUseCase,
+    UpdateRequirementStatusUseCase,
+    UpdateRequirementUseCase,
     UpdateTaskStatusUseCase,
     UpdateTaskUseCase,
     DeleteTaskUseCase,
@@ -59,6 +81,7 @@ user_repo = DjangoUserRepository()
 project_repo = DjangoProjectRepository()
 task_repo = DjangoTaskRepository()
 contract_repo = DjangoContractRepository()
+requirement_repo = DjangoRequirementRepository()
 
 
 def _format_pydantic_error(e: ValidationError) -> JsonResponse:
@@ -143,6 +166,12 @@ def home_view(request):
     in_progress_tasks = [t for t in tasks if t.status == TaskStatus.IN_PROGRESS]
     completed_tasks = [t for t in tasks if t.status == TaskStatus.COMPLETED]
 
+    all_tasks = task_repo.list_all()
+    requirements = requirement_repo.list_all()
+    for requirement in requirements:
+        requirement.linked_tasks = requirement_repo.list_linked_tasks(requirement.id)
+        requirement.linked_task_ids = {t.id for t in requirement.linked_tasks}
+
     context = {
         "projects": projects,
         "users": users,
@@ -155,6 +184,8 @@ def home_view(request):
         "pending_tasks": pending_tasks,
         "in_progress_tasks": in_progress_tasks,
         "completed_tasks": completed_tasks,
+        "requirements": requirements,
+        "all_tasks": all_tasks,
     }
     return render(request, "index.html", context)
 
@@ -402,6 +433,128 @@ def web_delete_task_view(request, task_id: str):
             messages.error(request, f"Erro ao excluir tarefa: {e}")
         except Exception as e:
             messages.error(request, f"Erro ao excluir tarefa: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_create_requirement_view(request):
+    if request.method == "POST":
+        code = request.POST.get("code", "")
+        title = request.POST.get("title", "")
+        description = request.POST.get("description", "")
+        req_type = request.POST.get("type", "")
+        priority = request.POST.get("priority", "MEDIUM")
+
+        try:
+            dto = CreateRequirementSchema(
+                code=code,
+                title=title,
+                description=description,
+                type=RequirementType(req_type),
+                priority=RequirementPriority(priority),
+            )
+            CreateRequirementUseCase(requirement_repo).execute(dto)
+            messages.success(request, f"Requisito '{code}' cadastrado com sucesso!")
+        except ValidationError as e:
+            msg = e.errors()[0].get("msg", "Dados do requisito inválidos.")
+            messages.error(request, f"Erro ao criar requisito: {msg}")
+        except ValueError:
+            messages.error(request, "Tipo ou prioridade de requisito inválidos.")
+        except DomainError as e:
+            messages.error(request, f"Erro de domínio: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_update_requirement_view(request, requirement_id: str):
+    if request.method == "POST":
+        try:
+            code = request.POST.get("code", "").strip()
+            title = request.POST.get("title", "").strip()
+            description = request.POST.get("description", "").strip()
+            type_str = request.POST.get("type", "").strip()
+            priority_str = request.POST.get("priority", "").strip()
+
+            dto = UpdateRequirementSchema(
+                code=code if code else None,
+                title=title if title else None,
+                description=description if description else None,
+                type=RequirementType(type_str) if type_str else None,
+                priority=RequirementPriority(priority_str) if priority_str else None,
+            )
+            UpdateRequirementUseCase(requirement_repo).execute(UUID(requirement_id), dto)
+            messages.success(request, "Requisito atualizado com sucesso!")
+        except ValidationError as e:
+            msg = e.errors()[0].get("msg", "Dados inválidos.")
+            messages.error(request, f"Erro de validação: {msg}")
+        except ValueError as e:
+            messages.error(request, f"Dados inválidos: {str(e)}")
+        except DomainError as e:
+            messages.error(request, f"Erro de domínio: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_update_requirement_status_view(request, requirement_id: str):
+    if request.method == "POST":
+        status_str = request.POST.get("status", "")
+        try:
+            dto = UpdateRequirementStatusSchema(status=RequirementStatus(status_str))
+            UpdateRequirementStatusUseCase(requirement_repo).execute(UUID(requirement_id), dto)
+            messages.success(request, "Status do requisito atualizado!")
+        except (ValidationError, ValueError):
+            messages.error(request, "Status de requisito inválido.")
+        except InvalidStatusTransitionError as e:
+            messages.error(request, f"Transição inválida: {e.message}")
+        except DomainError as e:
+            messages.error(request, f"Erro de domínio: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_delete_requirement_view(request, requirement_id: str):
+    if request.method == "POST":
+        try:
+            DeleteRequirementUseCase(requirement_repo).execute(UUID(requirement_id))
+            messages.success(request, "Requisito excluído com sucesso!")
+        except DomainError as e:
+            messages.error(request, f"Erro ao excluir requisito: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_update_requirement_tasks_view(request, requirement_id: str):
+    if request.method == "POST":
+        try:
+            task_id = UUID(request.POST.get("task_id", ""))
+            if request.POST.get("action") == "remove":
+                UnlinkRequirementFromTaskUseCase(requirement_repo).execute(UUID(requirement_id), task_id)
+                messages.success(request, "Tarefa desvinculada do requisito!")
+            else:
+                LinkRequirementToTaskUseCase(requirement_repo, task_repo).execute(UUID(requirement_id), task_id)
+                messages.success(request, "Tarefa vinculada ao requisito!")
+        except (ValidationError, ValueError):
+            messages.error(request, "Tarefa inválida.")
+        except DomainError as e:
+            messages.error(request, f"Erro ao vincular tarefa: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_export_specification_view(request):
+    if request.method == "POST":
+        spec_path = settings.BASE_DIR / "SPECIFICATION.md"
+        try:
+            export_requirements_section(requirement_repo, task_repo, spec_path)
+            messages.success(request, "SPECIFICATION.md atualizado com os requisitos cadastrados!")
+        except (ValueError, OSError) as e:
+            messages.error(request, f"Erro ao exportar especificação: {e}")
 
     return redirect("/")
 
@@ -706,6 +859,153 @@ def task_view(request, task_id: str):
         try:
             use_case.execute(task_uuid)
             return JsonResponse({"message": "Tarefa excluída com sucesso"}, status=204)
+        except TaskNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"detail": "Método não permitido"}, status=405)
+
+
+def _requirement_response(requirement) -> RequirementResponseSchema:
+    return RequirementResponseSchema(
+        id=requirement.id,
+        code=requirement.code,
+        title=requirement.title,
+        description=requirement.description,
+        type=requirement.type,
+        priority=requirement.priority,
+        status=requirement.status,
+        created_at=requirement.created_at,
+    )
+
+
+@csrf_exempt
+def requirements_view(request):
+    if request.method == "GET":
+        requirements = requirement_repo.list_all()
+        return JsonResponse(
+            [_requirement_response(r).model_dump(mode="json") for r in requirements],
+            safe=False,
+            status=200,
+        )
+
+    if request.method == "POST":
+        try:
+            body = json.loads(request.body.decode("utf-8")) if request.body else {}
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "JSON inválido"}, status=422)
+
+        try:
+            dto = CreateRequirementSchema(**body)
+        except ValidationError as e:
+            return _format_pydantic_error(e)
+
+        use_case = CreateRequirementUseCase(requirement_repo)
+        try:
+            requirement = use_case.execute(dto)
+            return JsonResponse(_requirement_response(requirement).model_dump(mode="json"), status=201)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"detail": "Método não permitido"}, status=405)
+
+
+@csrf_exempt
+def requirement_view(request, requirement_id: str):
+    try:
+        req_uuid = UUID(requirement_id)
+    except ValueError:
+        return JsonResponse({"detail": "UUID do requisito inválido"}, status=422)
+
+    if request.method in ["PUT", "PATCH"]:
+        try:
+            body = json.loads(request.body.decode("utf-8")) if request.body else {}
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "JSON inválido"}, status=422)
+
+        try:
+            dto = UpdateRequirementSchema(**body)
+        except ValidationError as e:
+            return _format_pydantic_error(e)
+
+        use_case = UpdateRequirementUseCase(requirement_repo)
+        try:
+            requirement = use_case.execute(req_uuid, dto)
+            return JsonResponse(_requirement_response(requirement).model_dump(mode="json"), status=200)
+        except RequirementNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    elif request.method == "DELETE":
+        use_case = DeleteRequirementUseCase(requirement_repo)
+        try:
+            use_case.execute(req_uuid)
+            return JsonResponse({"message": "Requisito excluído com sucesso"}, status=204)
+        except RequirementNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"detail": "Método não permitido"}, status=405)
+
+
+@csrf_exempt
+def requirement_status_view(request, requirement_id: str):
+    try:
+        req_uuid = UUID(requirement_id)
+    except ValueError:
+        return JsonResponse({"detail": "UUID do requisito inválido"}, status=422)
+
+    if request.method in ["PATCH", "POST"]:
+        try:
+            body = json.loads(request.body.decode("utf-8")) if request.body else {}
+        except json.JSONDecodeError:
+            return JsonResponse({"detail": "JSON inválido"}, status=422)
+
+        try:
+            dto = UpdateRequirementStatusSchema(**body)
+        except ValidationError as e:
+            return _format_pydantic_error(e)
+
+        use_case = UpdateRequirementStatusUseCase(requirement_repo)
+        try:
+            requirement = use_case.execute(req_uuid, dto)
+            return JsonResponse(_requirement_response(requirement).model_dump(mode="json"), status=200)
+        except RequirementNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
+        except InvalidStatusTransitionError as e:
+            return JsonResponse({"error": e.code, "message": e.message}, status=400)
+        except DomainError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    return JsonResponse({"detail": "Método não permitido"}, status=405)
+
+
+@csrf_exempt
+def requirement_tasks_view(request, requirement_id: str):
+    try:
+        req_uuid = UUID(requirement_id)
+    except ValueError:
+        return JsonResponse({"detail": "UUID do requisito inválido"}, status=422)
+
+    if request.method == "POST":
+        try:
+            body = json.loads(request.body.decode("utf-8")) if request.body else {}
+            task_uuid = UUID(body.get("task_id", ""))
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({"detail": "JSON ou task_id inválido"}, status=422)
+
+        try:
+            if body.get("action") == "remove":
+                UnlinkRequirementFromTaskUseCase(requirement_repo).execute(req_uuid, task_uuid)
+            else:
+                LinkRequirementToTaskUseCase(requirement_repo, task_repo).execute(req_uuid, task_uuid)
+            linked_tasks = requirement_repo.list_linked_tasks(req_uuid)
+            return JsonResponse({"linked_task_ids": [str(t.id) for t in linked_tasks]}, status=200)
+        except RequirementNotFoundError as e:
+            return JsonResponse({"error": e.message}, status=404)
         except TaskNotFoundError as e:
             return JsonResponse({"error": e.message}, status=404)
         except DomainError as e:

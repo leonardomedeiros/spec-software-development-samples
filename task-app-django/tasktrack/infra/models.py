@@ -118,6 +118,58 @@ class TaskModel(models.Model):
         db_table = "tasks"
 
 
+class RequirementModel(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=20, unique=True)
+    title = models.CharField(max_length=150)
+    description = models.TextField(blank=True, default="")
+    req_type = models.CharField(
+        max_length=25,
+        choices=[
+            ("FUNCTIONAL", "FUNCTIONAL"),
+            ("NON_FUNCTIONAL", "NON_FUNCTIONAL"),
+            ("BUSINESS_RULE", "BUSINESS_RULE"),
+            ("TECHNICAL_CONSTRAINT", "TECHNICAL_CONSTRAINT"),
+        ],
+        default="FUNCTIONAL",
+    )
+    priority = models.CharField(
+        max_length=10,
+        choices=[
+            ("LOW", "LOW"),
+            ("MEDIUM", "MEDIUM"),
+            ("HIGH", "HIGH"),
+        ],
+        default="MEDIUM",
+    )
+    status = models.CharField(
+        max_length=15,
+        choices=[
+            ("DRAFT", "DRAFT"),
+            ("APPROVED", "APPROVED"),
+            ("IMPLEMENTED", "IMPLEMENTED"),
+            ("DEPRECATED", "DEPRECATED"),
+        ],
+        default="DRAFT",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "requirements"
+
+
+class RequirementTaskLinkModel(models.Model):
+    requirement = models.ForeignKey(RequirementModel, on_delete=models.CASCADE, related_name="task_links")
+    task = models.ForeignKey(TaskModel, on_delete=models.CASCADE, related_name="requirement_links")
+    linked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "requirement_task_links"
+        constraints = [
+            models.UniqueConstraint(fields=["requirement", "task"], name="unique_requirement_task"),
+        ]
+
+
 class TaskHistoryModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     task = models.ForeignKey(TaskModel, on_delete=models.CASCADE, related_name="history")

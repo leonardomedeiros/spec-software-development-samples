@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import UUID
-from ..domain.entities import Contract, Project, Task, User
+from ..domain.entities import Contract, Project, Requirement, Task, User
 
 
 class IUserRepository(ABC):
@@ -77,4 +77,34 @@ class ITaskRepository(ABC):
 
     @abstractmethod
     def delete(self, task_id: UUID) -> None:
+        pass
+
+
+class IRequirementRepository(ABC):
+    @abstractmethod
+    def get_by_id(self, requirement_id: UUID) -> Optional[Requirement]:
+        pass
+
+    @abstractmethod
+    def list_all(self) -> List[Requirement]:
+        pass
+
+    @abstractmethod
+    def save(self, requirement: Requirement) -> Requirement:
+        pass
+
+    @abstractmethod
+    def delete(self, requirement_id: UUID) -> None:
+        pass
+
+    @abstractmethod
+    def list_linked_tasks(self, requirement_id: UUID) -> List[Task]:
+        pass
+
+    @abstractmethod
+    def link_task(self, requirement_id: UUID, task_id: UUID) -> None:
+        pass
+
+    @abstractmethod
+    def unlink_task(self, requirement_id: UUID, task_id: UUID) -> None:
         pass

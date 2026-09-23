@@ -5,7 +5,7 @@ class DomainError(Exception):
 
 class InvalidStatusTransitionError(DomainError):
     """Lançada quando ocorre uma transição inválida de status (RN-04 / CB-03)."""
-    def __init__(self, message: str = "Tarefas concluídas não podem ter seu status alterado."):
+    def __init__(self, message: str = "Transição de status inválida."):
         self.code = "INVALID_STATUS_TRANSITION"
         self.message = message
         super().__init__(self.message)
@@ -35,5 +35,19 @@ class UserNotFoundError(DomainError):
 class ContractNotFoundError(DomainError):
     """Lançada quando um contrato não é encontrado."""
     def __init__(self, message: str = "Contrato não encontrado"):
+        self.message = message
+        super().__init__(self.message)
+
+
+class RequirementNotFoundError(DomainError):
+    """Lançada quando um requisito não é encontrado."""
+    def __init__(self, message: str = "Requisito não encontrado"):
+        self.message = message
+        super().__init__(self.message)
+
+
+class RequirementCodeAlreadyExistsError(DomainError):
+    """Lançada ao tentar cadastrar um requisito com um código já utilizado."""
+    def __init__(self, message: str = "Já existe um requisito com este código"):
         self.message = message
         super().__init__(self.message)

@@ -1,10 +1,32 @@
 from typing import Optional
 from uuid import UUID
 
-from ..domain.entities import Contract, Project, Task, User
-from ..domain.enums import ContractStatus, TaskPriority, TaskStatus, UserRole
-from ..domain.repositories import IContractRepository, IProjectRepository, ITaskRepository, IUserRepository
-from .models import ContractModel, ProjectMembershipModel, ProjectModel, TaskModel, UserModel
+from ..domain.entities import Contract, Project, Requirement, Task, User
+from ..domain.enums import (
+    ContractStatus,
+    RequirementPriority,
+    RequirementStatus,
+    RequirementType,
+    TaskPriority,
+    TaskStatus,
+    UserRole,
+)
+from ..domain.repositories import (
+    IContractRepository,
+    IProjectRepository,
+    IRequirementRepository,
+    ITaskRepository,
+    IUserRepository,
+)
+from .models import (
+    ContractModel,
+    ProjectMembershipModel,
+    ProjectModel,
+    RequirementModel,
+    RequirementTaskLinkModel,
+    TaskModel,
+    UserModel,
+)
 
 
 class DjangoUserRepository(IUserRepository):
@@ -227,3 +249,79 @@ class DjangoTaskRepository(ITaskRepository):
 
     def delete(self, task_id: UUID) -> None:
         TaskModel.objects.filter(id=task_id).delete()
+
+
+class DjangoRequirementRepository(IRequirementRepository):
+    def get_by_id(self, requirement_id: UUID) -> Optional[Requirement]:
+        try:
+            orm_req = RequirementModel.objects.get(id=requirement_id)
+            return Requirement(
+                id=orm_req.id,
+                code=orm_req.code,
+                title=orm_req.title,
+                description=orm_req.description,
+                type=RequirementType(orm_req.req_type),
+                priority=RequirementPriority(orm_req.priority),
+                status=RequirementStatus(orm_req.status),
+                created_at=orm_req.created_at,
+            )
+        except RequirementModel.DoesNotExist:
+            return None
+
+    def list_all(self) -> list[Requirement]:
+        return [
+            Requirement(
+                id=r.id,
+                code=r.code,
+                title=r.title,
+                description=r.description,
+                type=RequirementType(r.req_type),
+                priority=RequirementPriority(r.priority),
+                status=RequirementStatus(r.status),
+                created_at=r.created_at,
+            )
+            for r in RequirementModel.objects.all().order_by("code")
+        ]
+
+    def save(self, requirement: Requirement) -> Requirement:
+        orm_req, _ = RequirementModel.objects.update_or_create(
+            id=requirement.id,
+            defaults={
+                "code": requirement.code,
+                "title": requirement.title,
+                "description": requirement.description,
+                "req_type": requirement.type.value,
+                "priority": requirement.priority.value,
+                "status": requirement.status.value,
+            },
+        )
+        requirement.created_at = orm_req.created_at
+        return requirement
+
+    def delete(self, requirement_id: UUID) -> None:
+        RequirementModel.objects.filter(id=requirement_id).delete()
+
+    def list_linked_tasks(self, requirement_id: UUID) -> list[Task]:
+        return [
+            Task(
+                id=link.task.id,
+                project_id=link.task.project_id,
+                title=link.task.title,
+                description=link.task.description,
+                status=TaskStatus(link.task.status),
+                priority=TaskPriority(link.task.priority),
+                assignee_id=link.task.assignee_id,
+                due_date=link.task.due_date,
+                github_url=link.task.github_url,
+                created_at=link.task.created_at,
+                updated_at=link.task.updated_at,
+            )
+            for link in RequirementTaskLinkModel.objects.filter(requirement_id=requirement_id)
+                .select_related("task").order_by("task__due_date")
+        ]
+
+    def link_task(self, requirement_id: UUID, task_id: UUID) -> None:
+        RequirementTaskLinkModel.objects.get_or_create(requirement_id=requirement_id, task_id=task_id)
+
+    def unlink_task(self, requirement_id: UUID, task_id: UUID) -> None:
+        RequirementTaskLinkModel.objects.filter(requirement_id=requirement_id, task_id=task_id).delete()
