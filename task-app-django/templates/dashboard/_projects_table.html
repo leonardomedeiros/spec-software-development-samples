@@ -10,6 +10,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
+                            <th>ID</th>
                             <th>Projeto</th>
                             <th>Contrato</th>
                             <th>Descrição</th>
@@ -21,6 +22,7 @@
                     <tbody>
                         {% for project in projects %}
                             <tr>
+                                <td class="fw-semibold">{{ project.display_id }}</td>
                                 <td class="fw-semibold">{{ project.title }}</td>
                                 <td>{{ project.contract_id }}</td>
                                 <td class="text-muted small">{{ project.description|truncatechars:80|default:"—" }}</td>

@@ -24,8 +24,17 @@ class UserModel(models.Model):
         db_table = "users"
 
 
+class IdentifierSequenceModel(models.Model):
+    prefix = models.CharField(max_length=10, primary_key=True)
+    last_value = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "identifier_sequences"
+
+
 class ContractModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    display_id = models.CharField(max_length=20, unique=True, editable=False, null=True)
     title = models.CharField(max_length=120)
     description = models.TextField(blank=True, default="")
     contract_file = models.CharField(
@@ -52,6 +61,7 @@ class ContractModel(models.Model):
 
 class ProjectModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    display_id = models.CharField(max_length=20, unique=True, editable=False, null=True)
     contract = models.ForeignKey(ContractModel, on_delete=models.CASCADE, related_name="projects")
     title = models.CharField(max_length=120)
     description = models.TextField(blank=True, default="")
@@ -76,6 +86,7 @@ class ProjectMembershipModel(models.Model):
 
 class TaskModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    display_id = models.CharField(max_length=20, unique=True, editable=False, null=True)
     project = models.ForeignKey(ProjectModel, on_delete=models.CASCADE, related_name="tasks")
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True, default="")
@@ -120,6 +131,7 @@ class TaskModel(models.Model):
 
 class RequirementModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    display_id = models.CharField(max_length=20, unique=True, editable=False, null=True)
     code = models.CharField(max_length=20, unique=True)
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True, default="")

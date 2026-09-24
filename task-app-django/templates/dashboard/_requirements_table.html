@@ -10,6 +10,7 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
+                            <th>ID</th>
                             <th>Código</th>
                             <th>Título</th>
                             <th>Tipo</th>
@@ -22,6 +23,7 @@
                     <tbody>
                         {% for req in requirements %}
                             <tr>
+                                <td class="fw-semibold">{{ req.display_id }}</td>
                                 <td class="fw-semibold">{{ req.code }}</td>
                                 <td>
                                     {{ req.title }}

@@ -32,6 +32,10 @@ class IProjectRepository(ABC):
         pass
 
     @abstractmethod
+    def next_display_id(self) -> str:
+        pass
+
+    @abstractmethod
     def list_team_members(self, project_id: UUID) -> List[User]:
         pass
 
@@ -62,6 +66,10 @@ class IContractRepository(ABC):
         pass
 
     @abstractmethod
+    def next_display_id(self) -> str:
+        pass
+
+    @abstractmethod
     def delete(self, contract_id: UUID) -> None:
         pass
 
@@ -84,6 +92,10 @@ class ITaskRepository(ABC):
         pass
 
     @abstractmethod
+    def next_display_id(self) -> str:
+        pass
+
+    @abstractmethod
     def delete(self, task_id: UUID) -> None:
         pass
 
@@ -99,6 +111,10 @@ class IRequirementRepository(ABC):
 
     @abstractmethod
     def save(self, requirement: Requirement) -> Requirement:
+        pass
+
+    @abstractmethod
+    def next_display_id(self) -> str:
         pass
 
     @abstractmethod

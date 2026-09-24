@@ -1,6 +1,8 @@
 from typing import Optional
 from uuid import UUID
 
+from django.db import transaction
+
 from ..domain.entities import Contract, Project, Requirement, Task, User
 from ..domain.enums import (
     ContractStatus,
@@ -20,6 +22,7 @@ from ..domain.repositories import (
 )
 from .models import (
     ContractModel,
+    IdentifierSequenceModel,
     ProjectMembershipModel,
     ProjectModel,
     RequirementModel,
@@ -27,6 +30,15 @@ from .models import (
     TaskModel,
     UserModel,
 )
+
+
+def _next_sequence_value(prefix: str) -> int:
+    """Gera o próximo número da sequência para um prefixo (ex: 'PRJ'), de forma atômica."""
+    with transaction.atomic():
+        sequence, _ = IdentifierSequenceModel.objects.select_for_update().get_or_create(prefix=prefix)
+        sequence.last_value += 1
+        sequence.save(update_fields=["last_value"])
+        return sequence.last_value
 
 
 class DjangoUserRepository(IUserRepository):
@@ -74,6 +86,7 @@ class DjangoContractRepository(IContractRepository):
             orm_contract = ContractModel.objects.get(id=contract_id)
             return Contract(
                 id=orm_contract.id,
+                display_id=orm_contract.display_id,
                 title=orm_contract.title,
                 description=orm_contract.description,
                 contract_file=orm_contract.contract_file,
@@ -88,6 +101,7 @@ class DjangoContractRepository(IContractRepository):
         return [
             Contract(
                 id=c.id,
+                display_id=c.display_id,
                 title=c.title,
                 description=c.description,
                 contract_file=c.contract_file,
@@ -102,6 +116,7 @@ class DjangoContractRepository(IContractRepository):
         orm_contract, _ = ContractModel.objects.update_or_create(
             id=contract.id,
             defaults={
+                "display_id": contract.display_id,
                 "title": contract.title,
                 "description": contract.description,
                 "contract_file": contract.contract_file,
@@ -111,6 +126,9 @@ class DjangoContractRepository(IContractRepository):
         )
         contract.created_at = orm_contract.created_at
         return contract
+
+    def next_display_id(self) -> str:
+        return f"CRT{_next_sequence_value('CRT')}"
 
     def delete(self, contract_id: UUID) -> None:
         ContractModel.objects.filter(id=contract_id).delete()
@@ -122,6 +140,7 @@ class DjangoProjectRepository(IProjectRepository):
             orm_proj = ProjectModel.objects.get(id=project_id)
             return Project(
                 id=orm_proj.id,
+                display_id=orm_proj.display_id,
                 contract_id=orm_proj.contract_id,
                 title=orm_proj.title,
                 description=orm_proj.description,
@@ -135,6 +154,7 @@ class DjangoProjectRepository(IProjectRepository):
         return [
             Project(
                 id=p.id,
+                display_id=p.display_id,
                 contract_id=p.contract_id,
                 title=p.title,
                 description=p.description,
@@ -148,6 +168,7 @@ class DjangoProjectRepository(IProjectRepository):
         orm_proj, _ = ProjectModel.objects.update_or_create(
             id=project.id,
             defaults={
+                "display_id": project.display_id,
                 "contract_id": project.contract_id,
                 "title": project.title,
                 "description": project.description,
@@ -156,6 +177,9 @@ class DjangoProjectRepository(IProjectRepository):
         )
         project.created_at = orm_proj.created_at
         return project
+
+    def next_display_id(self) -> str:
+        return f"PRJ{_next_sequence_value('PRJ')}"
 
     def list_team_members(self, project_id: UUID) -> list[User]:
         return [
@@ -185,6 +209,7 @@ class DjangoTaskRepository(ITaskRepository):
             orm_task = TaskModel.objects.get(id=task_id)
             return Task(
                 id=orm_task.id,
+                display_id=orm_task.display_id,
                 project_id=orm_task.project_id,
                 title=orm_task.title,
                 description=orm_task.description,
@@ -203,6 +228,7 @@ class DjangoTaskRepository(ITaskRepository):
         return [
             Task(
                 id=t.id,
+                display_id=t.display_id,
                 project_id=t.project_id,
                 title=t.title,
                 description=t.description,
@@ -221,6 +247,7 @@ class DjangoTaskRepository(ITaskRepository):
         return [
             Task(
                 id=t.id,
+                display_id=t.display_id,
                 project_id=t.project_id,
                 title=t.title,
                 description=t.description,
@@ -239,6 +266,7 @@ class DjangoTaskRepository(ITaskRepository):
         orm_task, _ = TaskModel.objects.update_or_create(
             id=task.id,
             defaults={
+                "display_id": task.display_id,
                 "project_id": task.project_id,
                 "title": task.title,
                 "description": task.description,
@@ -253,6 +281,9 @@ class DjangoTaskRepository(ITaskRepository):
         task.updated_at = orm_task.updated_at
         return task
 
+    def next_display_id(self) -> str:
+        return f"TSK{_next_sequence_value('TSK')}"
+
     def delete(self, task_id: UUID) -> None:
         TaskModel.objects.filter(id=task_id).delete()
 
@@ -263,6 +294,7 @@ class DjangoRequirementRepository(IRequirementRepository):
             orm_req = RequirementModel.objects.get(id=requirement_id)
             return Requirement(
                 id=orm_req.id,
+                display_id=orm_req.display_id,
                 code=orm_req.code,
                 title=orm_req.title,
                 description=orm_req.description,
@@ -278,6 +310,7 @@ class DjangoRequirementRepository(IRequirementRepository):
         return [
             Requirement(
                 id=r.id,
+                display_id=r.display_id,
                 code=r.code,
                 title=r.title,
                 description=r.description,
@@ -293,6 +326,7 @@ class DjangoRequirementRepository(IRequirementRepository):
         orm_req, _ = RequirementModel.objects.update_or_create(
             id=requirement.id,
             defaults={
+                "display_id": requirement.display_id,
                 "code": requirement.code,
                 "title": requirement.title,
                 "description": requirement.description,
@@ -303,6 +337,9 @@ class DjangoRequirementRepository(IRequirementRepository):
         )
         requirement.created_at = orm_req.created_at
         return requirement
+
+    def next_display_id(self) -> str:
+        return f"REQ{_next_sequence_value('REQ')}"
 
     def delete(self, requirement_id: UUID) -> None:
         RequirementModel.objects.filter(id=requirement_id).delete()

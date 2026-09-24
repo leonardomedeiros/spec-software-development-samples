@@ -1,0 +1,189 @@
+A proposta considera um e-commerce para uma clínica ou loja veterinária, com venda de produtos para animais, gerenciamento de estoque, pedidos, pagamentos e entregas. Serviços veterinários e medicamentos sujeitos a controle recebem tratamento específico.
+
+1. Escopo do sistema
+O sistema permitirá que clientes pesquisem e comprem produtos veterinários, acompanhem pedidos e mantenham os dados dos seus animais. Administradores poderão gerenciar catálogo, estoque, vendas, promoções e relatórios.
+
+Perfis de usuário
+Cliente: consulta produtos, realiza compras e acompanha pedidos.
+Administrador: gerencia produtos, estoque, pedidos, usuários e relatórios.
+Atendente: acompanha pedidos e presta suporte ao cliente.
+Responsável técnico: valida prescrições e libera produtos que exijam controle profissional.
+2. Requisitos funcionais
+ID	Requisito funcional
+RF01	Permitir o cadastro, autenticação e recuperação de senha dos usuários.
+RF02	Permitir o gerenciamento do perfil, endereços e dados pessoais do cliente.
+RF03	Permitir o cadastro dos animais, incluindo nome, espécie, raça, idade e peso.
+RF04	Exibir o catálogo de produtos com categorias, imagens, descrição, preço e disponibilidade.
+RF05	Permitir pesquisa e aplicação de filtros por categoria, espécie, marca, preço e disponibilidade.
+RF06	Permitir adicionar, alterar quantidade e remover produtos do carrinho.
+RF07	Calcular subtotal, descontos, frete e valor total da compra.
+RF08	Permitir a aplicação e validação de cupons promocionais.
+RF09	Permitir a seleção do endereço, modalidade de entrega e forma de pagamento.
+RF10	Integrar o sistema a um serviço de pagamento e registrar o resultado da transação.
+RF11	Criar pedidos e permitir o acompanhamento de seus status.
+RF12	Enviar confirmações e atualizações do pedido por e-mail ou outro canal configurado.
+RF13	Permitir o cancelamento do pedido conforme as regras comerciais.
+RF14	Permitir ao administrador cadastrar, editar, ativar e desativar produtos e categorias.
+RF15	Controlar estoque e impedir vendas acima da quantidade disponível.
+RF16	Alertar os responsáveis quando o estoque atingir o nível mínimo.
+RF17	Permitir ao administrador gerenciar pedidos e atualizar seus status.
+RF18	Gerar relatórios de vendas, pedidos, produtos vendidos e estoque.
+RF19	Permitir que clientes avaliem produtos adquiridos.
+RF20	Registrar histórico das principais operações administrativas.
+RF21	Exigir envio de receita para produtos cuja venda dependa de prescrição.
+RF22	Permitir a análise, aprovação ou rejeição da receita pelo responsável autorizado.
+RF23	Bloquear a conclusão da venda controlada sem a validação obrigatória.
+RF24	Disponibilizar canais e informações de atendimento ao cliente.
+RF25	Permitir a solicitação e o gerenciamento de devoluções e reembolsos.
+3. Requisitos não funcionais
+ID	Requisito não funcional
+RNF01	As páginas principais devem responder em até 3 segundos em condições normais de operação.
+RNF02	Senhas devem ser armazenadas com algoritmo seguro de hash e salt.
+RNF03	Toda comunicação deve utilizar HTTPS.
+RNF04	O sistema deve aplicar controle de acesso baseado em perfis e permissões.
+RNF05	O tratamento de dados pessoais deve observar a LGPD, incluindo finalidade, consentimento quando necessário e direitos do titular.
+RNF06	O sistema deve ser responsivo e funcionar em celulares, tablets e computadores.
+RNF07	O sistema deve manter registros de auditoria de operações sensíveis.
+RNF08	O sistema deve possuir rotina automática de backup e procedimento testado de restauração.
+RNF09	O sistema deve apresentar mensagens de erro compreensíveis sem expor informações técnicas sensíveis.
+RNF10	As operações de pedido e pagamento devem evitar duplicidade em caso de reenvio da solicitação.
+RNF11	O sistema deve seguir boas práticas de acessibilidade, tomando como referência a WCAG 2.1 nível AA.
+RNF12	Dados de cartão não devem ser armazenados diretamente pela aplicação; devem ser tratados por um provedor de pagamento adequado.
+RNF13	O sistema deve manter disponibilidade mensal compatível com a operação, com meta inicial de 99,5%.
+RNF14	O código deve possuir testes automatizados e documentação das APIs e regras críticas.
+4. Regras de negócio
+ID	Regra de negócio
+RN01	Um pedido somente será confirmado após a aprovação do pagamento, salvo modalidades que prevejam pagamento posterior.
+RN02	A quantidade de um produto no carrinho não pode ultrapassar o estoque disponível.
+RN03	O estoque será reservado durante o processo de pagamento por um período configurável.
+RN04	Cupons somente poderão ser utilizados dentro da validade e conforme seus critérios de elegibilidade.
+RN05	O cliente somente poderá avaliar produtos pertencentes a pedidos entregues.
+RN06	Cancelamentos, devoluções e reembolsos seguirão os prazos e condições comerciais aplicáveis.
+RN07	Produtos sujeitos a prescrição somente poderão ser liberados após validação por profissional autorizado.
+RN08	Uma receita rejeitada deverá possuir justificativa registrada.
+RN09	Alterações de preço não modificarão o valor de pedidos já confirmados.
+RN10	O histórico financeiro e de pedidos não poderá ser excluído por usuários comuns.
+A comercialização de medicamentos veterinários pode exigir regras adicionais de prescrição, armazenamento, retenção de documentos e responsabilidade técnica. Essas regras devem ser validadas com a assessoria jurídica e o responsável técnico do negócio.
+
+5. Tarefas de desenvolvimento
+ID	Tarefa	Entrega principal
+T01	Levantar processos, atores e regras do negócio	Documento de visão e escopo
+T02	Detalhar requisitos e critérios de aceitação	Especificação do software
+T03	Validar requisitos legais e sanitários	Regras para produtos controlados
+T04	Elaborar protótipos e fluxo de navegação	Protótipo das telas
+T05	Definir arquitetura, tecnologias e padrões	Documento de arquitetura
+T06	Modelar banco de dados	Modelo lógico e físico
+T07	Configurar repositório, ambientes e integração contínua	Pipeline de desenvolvimento
+T08	Desenvolver cadastro, autenticação e recuperação de senha	Módulo de identidade
+T09	Desenvolver perfil, endereços e cadastro de animais	Área do cliente
+T10	Desenvolver administração de produtos e categorias	Gestão do catálogo
+T11	Desenvolver vitrine, busca, filtros e página do produto	Catálogo público
+T12	Desenvolver gerenciamento e reserva de estoque	Módulo de estoque
+T13	Desenvolver carrinho e cálculo de valores	Carrinho de compras
+T14	Desenvolver gestão de cupons e promoções	Módulo promocional
+T15	Integrar cálculo de frete e opções de entrega	Módulo de entrega
+T16	Desenvolver checkout	Fluxo de finalização
+T17	Integrar provedor de pagamento e webhooks	Processamento financeiro
+T18	Desenvolver criação, acompanhamento e administração de pedidos	Módulo de pedidos
+T19	Implementar notificações transacionais	E-mails e avisos de status
+T20	Desenvolver cancelamentos, devoluções e reembolsos	Pós-venda
+T21	Desenvolver upload e validação de receitas	Controle de prescrição
+T22	Desenvolver avaliações de produtos	Módulo de avaliações
+T23	Desenvolver relatórios e painel administrativo	Indicadores gerenciais
+T24	Implementar perfis, permissões, auditoria e proteção de dados	Segurança e conformidade
+T25	Desenvolver página e canais de atendimento	Suporte ao cliente
+T26	Executar testes unitários e de integração	Suíte automatizada
+T27	Executar testes funcionais e de ponta a ponta	Evidências de validação
+T28	Executar testes de segurança, desempenho e acessibilidade	Relatório de qualidade
+T29	Preparar infraestrutura, backups e monitoramento	Ambiente de produção
+T30	Realizar homologação com usuários do negócio	Termo de homologação
+T31	Implantar o sistema em produção	Primeira versão publicada
+T32	Monitorar a implantação e corrigir falhas iniciais	Relatório pós-implantação
+6. Rastreabilidade entre requisitos e tarefas
+A matriz abaixo relaciona cada requisito às tarefas responsáveis por sua especificação, implementação ou verificação.
+
+Requisitos funcionais
+Requisito	Tarefas relacionadas
+RF01	T02, T08, T24, T26, T27
+RF02	T02, T09, T24, T27
+RF03	T02, T09, T27
+RF04	T04, T10, T11, T27
+RF05	T04, T11, T26, T27
+RF06	T04, T13, T26, T27
+RF07	T13, T14, T15, T26, T27
+RF08	T14, T26, T27
+RF09	T04, T15, T16, T27
+RF10	T16, T17, T24, T26, T27
+RF11	T18, T19, T26, T27
+RF12	T19, T26, T27
+RF13	T18, T20, T27
+RF14	T10, T24, T27
+RF15	T10, T12, T13, T18, T26, T27
+RF16	T12, T19, T27
+RF17	T18, T24, T27
+RF18	T23, T26, T27
+RF19	T22, T26, T27
+RF20	T24, T26, T27
+RF21	T03, T10, T21, T27
+RF22	T03, T21, T24, T27
+RF23	T03, T16, T21, T26, T27
+RF24	T25, T27
+RF25	T18, T20, T27
+Requisitos não funcionais
+Requisito	Tarefas relacionadas
+RNF01	T05, T11, T13, T16, T28, T29
+RNF02	T05, T08, T24, T28
+RNF03	T24, T29, T28
+RNF04	T05, T08, T24, T26, T28
+RNF05	T01, T02, T03, T09, T24, T28
+RNF06	T04, T11, T16, T27, T28
+RNF07	T05, T17, T18, T21, T24, T28
+RNF08	T29, T30, T32
+RNF09	T05, T08, T16, T17, T28
+RNF10	T05, T17, T18, T26, T28
+RNF11	T04, T11, T16, T25, T28
+RNF12	T03, T05, T17, T24, T28
+RNF13	T05, T29, T32
+RNF14	T05, T07, T26, T27, T28
+7. Critérios de aceitação essenciais
+Compra de produto
+gherkin
+
+
+Cenário: Finalizar uma compra com estoque disponível
+  Dado que o cliente possui produtos disponíveis no carrinho
+  E informou um endereço de entrega válido
+  Quando selecionar o frete e concluir um pagamento aprovado
+  Então o sistema deve criar o pedido
+  E registrar o pagamento
+  E atualizar ou reservar o estoque
+  E enviar a confirmação ao cliente
+Controle de estoque
+gherkin
+
+
+Cenário: Impedir venda sem estoque suficiente
+  Dado que um produto possui 2 unidades disponíveis
+  Quando o cliente tentar comprar 3 unidades
+  Então o sistema deve impedir a operação
+  E informar a quantidade máxima disponível
+Produto sujeito a prescrição
+gherkin
+
+
+Cenário: Bloquear produto sem receita aprovada
+  Dado que o carrinho contém um produto sujeito a prescrição
+  E a receita ainda não foi aprovada
+  Quando o cliente tentar concluir o pedido
+  Então o sistema deve bloquear a conclusão
+  E informar que a validação da receita está pendente
+Cupom promocional
+gherkin
+
+
+Cenário: Rejeitar cupom vencido
+  Dado que o cliente informou um cupom fora do prazo de validade
+  Quando solicitar sua aplicação
+  Então o sistema não deve conceder o desconto
+  E deve apresentar o motivo da rejeição
+Essa estrutura permite acompanhar a cobertura do projeto: todo requisito possui pelo menos uma tarefa de implementação e uma tarefa de validação, reduzindo o risco de funcionalidades não desenvolvidas ou não testadas.

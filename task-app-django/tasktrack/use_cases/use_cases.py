@@ -46,6 +46,7 @@ class CreateContractUseCase:
 
         contract = Contract(
             id=uuid4(),
+            display_id=self.contract_repo.next_display_id(),
             title=dto.title,
             description=dto.description or "",
             contract_file=dto.contract_file,
@@ -70,6 +71,7 @@ class CreateProjectUseCase:
 
         project = Project(
             id=uuid4(),
+            display_id=self.project_repo.next_display_id(),
             contract_id=dto.contract_id,
             title=dto.title,
             description=dto.description or "",
@@ -244,6 +246,7 @@ class CreateTaskUseCase:
         now = datetime.now(timezone.utc)
         task = Task(
             id=uuid4(),
+            display_id=self.task_repo.next_display_id(),
             project_id=project_id,
             title=dto.title,
             description=dto.description or "",
@@ -322,6 +325,7 @@ class CreateRequirementUseCase:
 
         requirement = Requirement(
             id=uuid4(),
+            display_id=self.requirement_repo.next_display_id(),
             code=dto.code,
             title=dto.title,
             description=dto.description or "",

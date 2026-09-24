@@ -27,6 +27,7 @@ class User:
 @dataclass
 class Contract:
     id: UUID = field(default_factory=uuid4)
+    display_id: Optional[str] = None
     title: str = ""
     description: str = ""
     contract_file: Optional[str] = None
@@ -50,6 +51,7 @@ class Contract:
 @dataclass
 class Project:
     id: UUID = field(default_factory=uuid4)
+    display_id: Optional[str] = None
     contract_id: Optional[UUID] = None
     title: str = ""
     description: str = ""
@@ -60,6 +62,7 @@ class Project:
 @dataclass
 class Task:
     id: UUID = field(default_factory=uuid4)
+    display_id: Optional[str] = None
     project_id: Optional[UUID] = None
     title: str = ""
     description: str = ""
@@ -91,6 +94,7 @@ class Task:
 @dataclass
 class Requirement:
     id: UUID = field(default_factory=uuid4)
+    display_id: Optional[str] = None
     code: str = ""
     title: str = ""
     description: str = ""
