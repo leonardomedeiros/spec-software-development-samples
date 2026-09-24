@@ -627,6 +627,44 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(len(self.requirement_repo.list_all()), 1)
 
+    def test_web_create_requirement_with_tasks_and_actors_linked(self):
+        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+
+        response = self.client.post(
+            "/web/requirements",
+            {
+                "code": "RF-01",
+                "title": "Autenticação de Usuários",
+                "type": "FUNCTIONAL",
+                "priority": "HIGH",
+                "task_ids": [str(self.task.id)],
+                "actor_ids": [str(actor.id)],
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        requirement = self.requirement_repo.list_all()[0]
+
+        linked_tasks = self.requirement_repo.list_linked_tasks(requirement.id)
+        self.assertEqual([t.id for t in linked_tasks], [self.task.id])
+
+        linked_actors = self.requirement_repo.list_linked_actors(requirement.id)
+        self.assertEqual([a.id for a in linked_actors], [actor.id])
+
+    def test_web_create_requirement_with_invalid_task_rolls_back(self):
+        """Se um task_id inválido for enviado, o requisito não deve ser persistido (transação atômica)."""
+        response = self.client.post(
+            "/web/requirements",
+            {
+                "code": "RF-01",
+                "title": "Autenticação de Usuários",
+                "type": "FUNCTIONAL",
+                "priority": "HIGH",
+                "task_ids": [str(uuid.uuid4())],
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.requirement_repo.list_all(), [])
+
     def test_web_link_task_to_requirement(self):
         dto = CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
         requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)

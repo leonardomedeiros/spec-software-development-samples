@@ -239,6 +239,7 @@ CREATE TABLE actors (
 * `type` aceita `FUNCTIONAL`, `NON_FUNCTIONAL`, `BUSINESS_RULE` ou `TECHNICAL_CONSTRAINT`. `priority` aceita `LOW`, `MEDIUM` ou `HIGH`.
 * `status` é um campo próprio do requisito (não é calculado a partir das tarefas vinculadas, ao contrário do status do Projeto — ver seção 2.3), com transições: `DRAFT -> {APPROVED, DEPRECATED}`, `APPROVED -> {IMPLEMENTED, DRAFT, DEPRECATED}`, `IMPLEMENTED -> {APPROVED, DEPRECATED}`. `DEPRECATED` é um estado final e não pode retornar para outro status.
 * A combinação `requirement_id` + `task_id` é única; vincular uma tarefa já vinculada não cria duplicidade. Ao excluir um requisito ou uma tarefa, os vínculos correspondentes são removidos em cascata.
+* O vínculo com Tarefas pode ser feito de duas formas: (1) já no momento do cadastro do requisito, selecionando uma ou mais tarefas no modal de criação (`task_ids`, seção 3.2); ou (2) posteriormente, pela tabela de Requisitos (`POST /web/requirements/{requirement_id}/tasks`). Ambas usam o mesmo vínculo N:N e produzem o mesmo resultado.
 * Os requisitos cadastrados podem ser exportados/refletidos no próprio `SPECIFICATION.md` (ver seção 7).
 
 ### 2.7 Atores do Sistema e Vínculo com Requisitos
@@ -246,7 +247,8 @@ CREATE TABLE actors (
 * Um Ator (`name`, `description` em Markdown) é uma entidade independente do cadastro de Usuários (`users`) — representa um papel/persona de negócio que interage com o sistema (ex.: *Cliente*, *Administrador*, *Atendente*), sem estar necessariamente associado a uma conta de acesso.
 * Um Ator pode ser vinculado a um ou mais Requisitos, e um Requisito pode estar vinculado a vários Atores (N:N), por meio da tabela `actor_requirement_links`, no mesmo padrão do vínculo Requisito↔Tarefa (seção 2.6).
 * A combinação `actor_id` + `requirement_id` é única; vincular um ator já vinculado não cria duplicidade. Ao excluir um ator ou um requisito, os vínculos correspondentes são removidos em cascata.
-* A gestão do vínculo (adicionar/remover) é centralizada na tabela de Requisitos do dashboard (`POST /web/requirements/{requirement_id}/actors`, seção 3.2), no mesmo padrão adotado para o vínculo com Tarefas — evitando duas interfaces divergentes para a mesma operação. A tabela de Atores exibe, de forma recíproca e somente leitura, os requisitos vinculados a cada ator.
+* Assim como o vínculo com Tarefas (seção 2.6), o vínculo com Atores pode ser feito já no momento do cadastro do requisito, selecionando um ou mais atores no modal de criação (`actor_ids`, seção 3.2), ou posteriormente pela tabela de Requisitos.
+* A gestão do vínculo após a criação (adicionar/remover) é centralizada na tabela de Requisitos do dashboard (`POST /web/requirements/{requirement_id}/actors`, seção 3.2), no mesmo padrão adotado para o vínculo com Tarefas — evitando duas interfaces divergentes para a mesma operação. A tabela de Atores exibe, de forma recíproca e somente leitura, os requisitos vinculados a cada ator.
 * Os atores vinculados a cada requisito também são refletidos na seção 7 (Requisitos Rastreáveis) do `SPECIFICATION.md`, junto com as tarefas vinculadas.
 
 ### 2.3 Status de Contratos e Projetos
@@ -299,6 +301,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * Modal de Cadastro de Tarefa (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown, com seleção de prioridade, projeto, responsável e data de vencimento).
     * Modal de Edição de Tarefa (permite atualizar todos os campos incluindo descrição em Markdown com 400px min-height = ~20 linhas, redimensionável, github_url; pré-preenchido com dados da tarefa selecionada).
     * Modal de Cadastro de Usuários (para membros da equipe).
+    * Modal de Cadastro de Requisito (descrição em Markdown, com seleção múltipla de Tarefas e de Atores a vincular já na criação — ver seções 2.6/2.7).
     * Modal de Cadastro de Ator (nome e descrição em Markdown).
     * Modal de Edição de Ator (pré-preenchido com dados do ator selecionado).
 
@@ -358,7 +361,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Cadastrar Usuário:** `POST /web/users` (Campos: `name`, `email`, `password`, `password_confirmation`, `role`).
 * **Entrar:** `POST /login` (Campos: `username` com o e-mail e `password`).
 * **Sair:** `GET /logout`.
-* **Cadastrar Requisito:** `POST /web/requirements` (Campos: `code`, `title`, `description`, `type`, `priority`).
+* **Cadastrar Requisito:** `POST /web/requirements` (Campos: `code`, `title`, `description`, `type`, `priority`, `task_ids` [opcional, lista de UUIDs de tarefas a vincular] e `actor_ids` [opcional, lista de UUIDs de atores a vincular]). A criação do requisito e os vínculos com tarefas/atores ocorrem em uma única transação: se algum `task_id`/`actor_id` informado não existir, nada é persistido (o requisito não é criado).
 * **Editar Requisito:** `POST /web/requirements/{requirement_id}` (Campos opcionais: `code`, `title`, `description`, `type`, `priority` — atualização parcial, igual à edição de tarefa).
 * **Alterar status do Requisito:** `POST /web/requirements/{requirement_id}/status` (Campo: `status`, conforme transições da seção 2.6).
 * **Vincular/Desvincular Tarefa ao Requisito:** `POST /web/requirements/{requirement_id}/tasks` (Campos: `action` com `add` ou `remove`, e `task_id`).

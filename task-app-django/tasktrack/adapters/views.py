@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User as DjangoUser
 from django.conf import settings
 from django.core.files.storage import default_storage
+from django.db import transaction
 from django.http import JsonResponse, FileResponse, HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
@@ -589,6 +590,8 @@ def web_create_requirement_view(request):
         description = request.POST.get("description", "")
         req_type = request.POST.get("type", "")
         priority = request.POST.get("priority", "MEDIUM")
+        task_ids = [t for t in request.POST.getlist("task_ids") if t]
+        actor_ids = [a for a in request.POST.getlist("actor_ids") if a]
 
         try:
             dto = CreateRequirementSchema(
@@ -598,13 +601,22 @@ def web_create_requirement_view(request):
                 type=RequirementType(req_type),
                 priority=RequirementPriority(priority),
             )
-            CreateRequirementUseCase(requirement_repo).execute(dto)
+            with transaction.atomic():
+                requirement = CreateRequirementUseCase(requirement_repo).execute(dto)
+                for task_id in task_ids:
+                    LinkRequirementToTaskUseCase(requirement_repo, task_repo).execute(
+                        requirement.id, UUID(task_id)
+                    )
+                for actor_id in actor_ids:
+                    LinkActorToRequirementUseCase(requirement_repo, actor_repo).execute(
+                        requirement.id, UUID(actor_id)
+                    )
             messages.success(request, f"Requisito '{code}' cadastrado com sucesso!")
         except ValidationError as e:
             msg = e.errors()[0].get("msg", "Dados do requisito inválidos.")
             messages.error(request, f"Erro ao criar requisito: {msg}")
         except ValueError:
-            messages.error(request, "Tipo ou prioridade de requisito inválidos.")
+            messages.error(request, "Tipo, prioridade, tarefa ou ator inválidos.")
         except DomainError as e:
             messages.error(request, f"Erro de domínio: {e}")
 
