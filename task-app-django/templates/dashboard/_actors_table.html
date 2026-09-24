@@ -1,0 +1,57 @@
+<!-- Actors -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="fw-bold mb-0"><i class="bi bi-people me-2"></i>Atores do Sistema</h5>
+            <span class="badge bg-secondary rounded-pill">{{ actors|length }}</span>
+        </div>
+        {% if actors %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Descrição</th>
+                            <th>Requisitos Vinculados</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for actor in actors %}
+                            <tr>
+                                <td class="fw-semibold">{{ actor.display_id }}</td>
+                                <td class="fw-semibold">{{ actor.name }}</td>
+                                <td class="text-muted small">{{ actor.description|truncatechars:80|default:"—" }}</td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for code in actor.requirement_codes %}
+                                            <span class="badge bg-dark bg-opacity-75">{{ code }}</span>
+                                        {% empty %}
+                                            <span class="text-muted small">Nenhum requisito vinculado</span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditActor" data-actor-id="{{ actor.id }}" data-actor-name="{{ actor.name|escapejs }}" data-actor-description="{{ actor.description|escapejs }}" title="Editar ator">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <form method="POST" action="/web/actors/{{ actor.id }}/delete" class="d-inline" data-entity-type="ator">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir ator">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted small mb-0">Nenhum ator cadastrado. Use o botão <strong>Novo Ator</strong> para começar.</p>
+        {% endif %}
+    </div>
+</div>

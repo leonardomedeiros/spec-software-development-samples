@@ -248,3 +248,38 @@ class RequirementResponseSchema(BaseModel):
     priority: RequirementPriority
     status: RequirementStatus
     created_at: datetime
+
+
+class CreateActorSchema(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100)
+    description: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_actor_name(cls, v: str) -> str:
+        clean_val = v.strip()
+        if len(clean_val) < 2:
+            raise ValueError("O nome do ator deve conter no mínimo 2 caracteres válidos.")
+        return clean_val
+
+
+class UpdateActorSchema(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=100)
+    description: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_actor_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        clean_val = v.strip()
+        if len(clean_val) < 2:
+            raise ValueError("O nome do ator deve conter no mínimo 2 caracteres válidos.")
+        return clean_val
+
+
+class ActorResponseSchema(BaseModel):
+    id: UUID
+    name: str
+    description: Optional[str] = None
+    created_at: datetime

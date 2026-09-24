@@ -208,6 +208,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Handle edit actor modal prefill
+document.addEventListener('DOMContentLoaded', function() {
+    const modalEditActor = document.getElementById('modalEditActor');
+    const formEditActor = document.getElementById('formEditActor');
+    if (modalEditActor && formEditActor) {
+        modalEditActor.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            if (!button) return;
+
+            const actorId = button.getAttribute('data-actor-id');
+            document.getElementById('editActorName').value = button.getAttribute('data-actor-name') || '';
+            document.getElementById('editActorDescription').value = button.getAttribute('data-actor-description') || '';
+
+            formEditActor.action = `/web/actors/${actorId}`;
+        });
+    }
+});
+
 // Handle delete confirmation modal (tasks, requirements, contracts, projects)
 document.addEventListener('click', function(e) {
     if (e.target.closest('form[action*="/delete"]')) {

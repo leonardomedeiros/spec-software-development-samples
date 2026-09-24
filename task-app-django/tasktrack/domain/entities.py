@@ -122,6 +122,15 @@ class Requirement:
 
 
 @dataclass
+class Actor:
+    id: UUID = field(default_factory=uuid4)
+    display_id: Optional[str] = None
+    name: str = ""
+    description: str = ""
+    created_at: Optional[datetime] = None
+
+
+@dataclass
 class TaskHistory:
     id: UUID = field(default_factory=uuid4)
     task_id: UUID = field(default_factory=uuid4)

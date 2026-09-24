@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ..domain.entities import Requirement, Task
+from ..domain.entities import Actor, Requirement, Task
 from ..domain.repositories import IRequirementRepository, ITaskRepository
 
 START_MARKER = "<!-- REQUISITOS:START -->"
@@ -14,7 +14,7 @@ _TYPE_LABELS = {
 }
 
 
-def _render_requirement(requirement: Requirement, linked_tasks: list[Task]) -> str:
+def _render_requirement(requirement: Requirement, linked_tasks: list[Task], linked_actors: list[Actor]) -> str:
     lines = [
         f"**{requirement.code} — {requirement.title}**",
         f"*Tipo: {_TYPE_LABELS.get(requirement.type.value, requirement.type.value)} "
@@ -30,6 +30,13 @@ def _render_requirement(requirement: Requirement, linked_tasks: list[Task]) -> s
             lines.append(f"* {task.title} (`{task.status.value}`)")
     else:
         lines.append("Tarefas vinculadas: _nenhuma tarefa vinculada._")
+    lines.append("")
+    if linked_actors:
+        lines.append("Atores vinculados:")
+        for actor in linked_actors:
+            lines.append(f"* {actor.name} (`{actor.display_id}`)")
+    else:
+        lines.append("Atores vinculados: _nenhum ator vinculado._")
     return "\n".join(lines)
 
 
@@ -39,7 +46,11 @@ def build_requirements_section(requirement_repo: IRequirementRepository, task_re
         return "_Nenhum requisito cadastrado ainda. Use o dashboard ou `export_specification` para gerar esta seção._"
 
     blocks = [
-        _render_requirement(requirement, requirement_repo.list_linked_tasks(requirement.id))
+        _render_requirement(
+            requirement,
+            requirement_repo.list_linked_tasks(requirement.id),
+            requirement_repo.list_linked_actors(requirement.id),
+        )
         for requirement in requirements
     ]
     return "\n\n".join(blocks)

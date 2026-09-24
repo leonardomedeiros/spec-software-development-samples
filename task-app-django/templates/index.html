@@ -7,6 +7,7 @@
 {% include "dashboard/_project_filter.html" %}
 {% include "dashboard/_contracts.html" %}
 {% include "dashboard/_projects_table.html" %}
+{% include "dashboard/_actors_table.html" %}
 {% include "dashboard/_requirements_table.html" %}
 {% include "dashboard/_tasks_kanban.html" %}
 
@@ -20,6 +21,8 @@
 {% include "dashboard/modals/_edit_task.html" %}
 {% include "dashboard/modals/_confirm_delete.html" %}
 {% include "dashboard/modals/_new_user.html" %}
+{% include "dashboard/modals/_new_actor.html" %}
+{% include "dashboard/modals/_edit_actor.html" %}
 
 <script src="{% static 'tasktrack/js/dashboard.js' %}"></script>
 {% endblock %}

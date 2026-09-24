@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from ..domain.entities import Contract, Project, Requirement, Task
+from ..domain.entities import Actor, Contract, Project, Requirement, Task
 from ..domain.enums import ContractStatus, ProjectStatus, TaskStatus
 from ..domain.exceptions import (
+    ActorNotFoundError,
     ContractNotFoundError,
     InvalidStatusTransitionError,
     ProjectNotFoundError,
@@ -13,6 +14,7 @@ from ..domain.exceptions import (
     UserNotFoundError,
 )
 from ..domain.repositories import (
+    IActorRepository,
     IContractRepository,
     IProjectRepository,
     IRequirementRepository,
@@ -20,10 +22,12 @@ from ..domain.repositories import (
     IUserRepository,
 )
 from ..schemas.schemas import (
+    CreateActorSchema,
     CreateContractSchema,
     CreateProjectSchema,
     CreateRequirementSchema,
     CreateTaskSchema,
+    UpdateActorSchema,
     UpdateContractSchema,
     UpdateContractStatusSchema,
     UpdateProjectSchema,
@@ -405,3 +409,69 @@ class UnlinkRequirementFromTaskUseCase:
         if not self.requirement_repo.get_by_id(requirement_id):
             raise RequirementNotFoundError()
         self.requirement_repo.unlink_task(requirement_id, task_id)
+
+
+class CreateActorUseCase:
+    def __init__(self, actor_repo: IActorRepository):
+        self.actor_repo = actor_repo
+
+    def execute(self, dto: CreateActorSchema) -> Actor:
+        actor = Actor(
+            id=uuid4(),
+            display_id=self.actor_repo.next_display_id(),
+            name=dto.name,
+            description=dto.description or "",
+            created_at=datetime.now(timezone.utc),
+        )
+        return self.actor_repo.save(actor)
+
+
+class UpdateActorUseCase:
+    def __init__(self, actor_repo: IActorRepository):
+        self.actor_repo = actor_repo
+
+    def execute(self, actor_id: UUID, dto: UpdateActorSchema) -> Actor:
+        actor = self.actor_repo.get_by_id(actor_id)
+        if not actor:
+            raise ActorNotFoundError()
+
+        if dto.name is not None:
+            actor.name = dto.name
+        if dto.description is not None:
+            actor.description = dto.description
+
+        return self.actor_repo.save(actor)
+
+
+class DeleteActorUseCase:
+    def __init__(self, actor_repo: IActorRepository):
+        self.actor_repo = actor_repo
+
+    def execute(self, actor_id: UUID) -> None:
+        actor = self.actor_repo.get_by_id(actor_id)
+        if not actor:
+            raise ActorNotFoundError()
+        self.actor_repo.delete(actor_id)
+
+
+class LinkActorToRequirementUseCase:
+    def __init__(self, requirement_repo: IRequirementRepository, actor_repo: IActorRepository):
+        self.requirement_repo = requirement_repo
+        self.actor_repo = actor_repo
+
+    def execute(self, requirement_id: UUID, actor_id: UUID) -> None:
+        if not self.requirement_repo.get_by_id(requirement_id):
+            raise RequirementNotFoundError()
+        if not self.actor_repo.get_by_id(actor_id):
+            raise ActorNotFoundError()
+        self.requirement_repo.link_actor(requirement_id, actor_id)
+
+
+class UnlinkActorFromRequirementUseCase:
+    def __init__(self, requirement_repo: IRequirementRepository):
+        self.requirement_repo = requirement_repo
+
+    def execute(self, requirement_id: UUID, actor_id: UUID) -> None:
+        if not self.requirement_repo.get_by_id(requirement_id):
+            raise RequirementNotFoundError()
+        self.requirement_repo.unlink_actor(requirement_id, actor_id)

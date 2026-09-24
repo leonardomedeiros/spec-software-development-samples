@@ -8,7 +8,7 @@ from django.contrib.auth.models import User as AuthUser
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 
-from tasktrack.domain.entities import Contract, Project, Requirement, Task, User
+from tasktrack.domain.entities import Actor, Contract, Project, Requirement, Task, User
 from tasktrack.domain.enums import (
     ContractStatus,
     RequirementPriority,
@@ -19,6 +19,7 @@ from tasktrack.domain.enums import (
     UserRole,
 )
 from tasktrack.domain.exceptions import (
+    ActorNotFoundError,
     InvalidStatusTransitionError,
     ProjectNotFoundError,
     RequirementCodeAlreadyExistsError,
@@ -27,25 +28,33 @@ from tasktrack.domain.exceptions import (
     UserNotFoundError,
 )
 from tasktrack.schemas.schemas import (
+    CreateActorSchema,
     CreateContractSchema,
     CreateProjectSchema,
     CreateRequirementSchema,
     CreateTaskSchema,
+    UpdateActorSchema,
     UpdateRequirementSchema,
     UpdateTaskStatusSchema,
 )
 from tasktrack.use_cases.use_cases import (
+    CreateActorUseCase,
     CreateContractUseCase,
     CreateProjectUseCase,
     CreateRequirementUseCase,
     CreateTaskUseCase,
+    DeleteActorUseCase,
+    LinkActorToRequirementUseCase,
     LinkRequirementToTaskUseCase,
+    UnlinkActorFromRequirementUseCase,
     UnlinkRequirementFromTaskUseCase,
+    UpdateActorUseCase,
     UpdateRequirementUseCase,
     UpdateTaskStatusUseCase,
 )
 from tasktrack.use_cases.specification_export import END_MARKER, START_MARKER, export_requirements_section
 from tasktrack.infra.repositories import (
+    DjangoActorRepository,
     DjangoContractRepository,
     DjangoProjectRepository,
     DjangoRequirementRepository,
@@ -62,6 +71,7 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         self.task_repo = DjangoTaskRepository()
         self.contract_repo = DjangoContractRepository()
         self.requirement_repo = DjangoRequirementRepository()
+        self.actor_repo = DjangoActorRepository()
 
         self.media_root = tempfile.mkdtemp()
         self.override_media = override_settings(MEDIA_ROOT=self.media_root)
@@ -670,4 +680,112 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         self.assertIn("RF-01", new_content)
         self.assertIn(self.task.title, new_content)
         self.assertNotIn("placeholder", new_content)
+        shutil.rmtree(spec_dir, ignore_errors=True)
+
+    # -------------------------------------------------------------
+    # ACTOR (ATORES DO SISTEMA) TESTS
+    # -------------------------------------------------------------
+    def test_create_actor_use_case_success(self):
+        dto = CreateActorSchema(name="Cliente", description="Compra produtos no sistema.")
+        actor = CreateActorUseCase(self.actor_repo).execute(dto)
+        self.assertEqual(actor.name, "Cliente")
+        self.assertTrue(actor.display_id.startswith("ACT"))
+
+    def test_update_actor_partial(self):
+        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+
+        updated = UpdateActorUseCase(self.actor_repo).execute(
+            actor.id, UpdateActorSchema(description="Nova descrição")
+        )
+        self.assertEqual(updated.name, "Cliente")
+        self.assertEqual(updated.description, "Nova descrição")
+
+    def test_update_actor_not_found(self):
+        with self.assertRaises(ActorNotFoundError):
+            UpdateActorUseCase(self.actor_repo).execute(uuid.uuid4(), UpdateActorSchema(name="Novo"))
+
+    def test_delete_actor_success(self):
+        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Administrador"))
+        DeleteActorUseCase(self.actor_repo).execute(actor.id)
+        self.assertIsNone(self.actor_repo.get_by_id(actor.id))
+
+    def test_delete_actor_not_found(self):
+        with self.assertRaises(ActorNotFoundError):
+            DeleteActorUseCase(self.actor_repo).execute(uuid.uuid4())
+
+    def test_link_and_unlink_actor_to_requirement(self):
+        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+        requirement = CreateRequirementUseCase(self.requirement_repo).execute(
+            CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        )
+
+        LinkActorToRequirementUseCase(self.requirement_repo, self.actor_repo).execute(requirement.id, actor.id)
+        linked_actors = self.requirement_repo.list_linked_actors(requirement.id)
+        self.assertEqual([a.id for a in linked_actors], [actor.id])
+        linked_requirements = self.actor_repo.list_linked_requirements(actor.id)
+        self.assertEqual([r.id for r in linked_requirements], [requirement.id])
+
+        UnlinkActorFromRequirementUseCase(self.requirement_repo).execute(requirement.id, actor.id)
+        self.assertEqual(self.requirement_repo.list_linked_actors(requirement.id), [])
+
+    def test_link_actor_requirement_not_found(self):
+        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+        with self.assertRaises(RequirementNotFoundError):
+            LinkActorToRequirementUseCase(self.requirement_repo, self.actor_repo).execute(uuid.uuid4(), actor.id)
+
+    def test_link_requirement_actor_not_found(self):
+        requirement = CreateRequirementUseCase(self.requirement_repo).execute(
+            CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        )
+        with self.assertRaises(ActorNotFoundError):
+            LinkActorToRequirementUseCase(self.requirement_repo, self.actor_repo).execute(requirement.id, uuid.uuid4())
+
+    def test_web_create_actor_success(self):
+        response = self.client.post("/web/actors", {"name": "Cliente", "description": "Compra produtos."})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(self.actor_repo.list_all()), 1)
+
+    def test_web_update_actor_success(self):
+        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+        response = self.client.post(f"/web/actors/{actor.id}", {"name": "Cliente VIP"})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.actor_repo.get_by_id(actor.id).name, "Cliente VIP")
+
+    def test_web_delete_actor_success(self):
+        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+        response = self.client.post(f"/web/actors/{actor.id}/delete")
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNone(self.actor_repo.get_by_id(actor.id))
+
+    def test_web_link_actor_to_requirement(self):
+        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+        requirement = CreateRequirementUseCase(self.requirement_repo).execute(
+            CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        )
+
+        response = self.client.post(
+            f"/web/requirements/{requirement.id}/actors",
+            {"action": "add", "actor_id": str(actor.id)},
+        )
+        self.assertEqual(response.status_code, 302)
+        linked = self.requirement_repo.list_linked_actors(requirement.id)
+        self.assertEqual([a.id for a in linked], [actor.id])
+
+    def test_export_requirements_section_includes_linked_actors(self):
+        spec_content = f"# Título\n\n{START_MARKER}\nplaceholder\n{END_MARKER}\n"
+        spec_dir = tempfile.mkdtemp()
+        spec_path = Path(spec_dir) / "SPECIFICATION.md"
+        spec_path.write_text(spec_content, encoding="utf-8")
+
+        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+        requirement = CreateRequirementUseCase(self.requirement_repo).execute(
+            CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        )
+        LinkActorToRequirementUseCase(self.requirement_repo, self.actor_repo).execute(requirement.id, actor.id)
+
+        export_requirements_section(self.requirement_repo, self.task_repo, spec_path)
+
+        new_content = spec_path.read_text(encoding="utf-8")
+        self.assertIn("Atores vinculados:", new_content)
+        self.assertIn("Cliente", new_content)
         shutil.rmtree(spec_dir, ignore_errors=True)

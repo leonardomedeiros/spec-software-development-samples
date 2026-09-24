@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import UUID
-from ..domain.entities import Contract, Project, Requirement, Task, User
+from ..domain.entities import Actor, Contract, Project, Requirement, Task, User
 
 
 class IUserRepository(ABC):
@@ -131,4 +131,42 @@ class IRequirementRepository(ABC):
 
     @abstractmethod
     def unlink_task(self, requirement_id: UUID, task_id: UUID) -> None:
+        pass
+
+    @abstractmethod
+    def list_linked_actors(self, requirement_id: UUID) -> List[Actor]:
+        pass
+
+    @abstractmethod
+    def link_actor(self, requirement_id: UUID, actor_id: UUID) -> None:
+        pass
+
+    @abstractmethod
+    def unlink_actor(self, requirement_id: UUID, actor_id: UUID) -> None:
+        pass
+
+
+class IActorRepository(ABC):
+    @abstractmethod
+    def get_by_id(self, actor_id: UUID) -> Optional[Actor]:
+        pass
+
+    @abstractmethod
+    def list_all(self) -> List[Actor]:
+        pass
+
+    @abstractmethod
+    def save(self, actor: Actor) -> Actor:
+        pass
+
+    @abstractmethod
+    def next_display_id(self) -> str:
+        pass
+
+    @abstractmethod
+    def delete(self, actor_id: UUID) -> None:
+        pass
+
+    @abstractmethod
+    def list_linked_requirements(self, actor_id: UUID) -> List[Requirement]:
         pass

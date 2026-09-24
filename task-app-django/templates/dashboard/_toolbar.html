@@ -19,6 +19,9 @@
         <button type="button" class="btn btn-outline-dark" data-bs-toggle="modal" data-bs-target="#modalRequirement">
             <i class="bi bi-list-check me-1"></i> Novo Requisito
         </button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalActor">
+            <i class="bi bi-people me-1"></i> Novo Ator
+        </button>
         <form method="POST" action="/web/specification/export" class="d-inline">
             {% csrf_token %}
             <button type="submit" class="btn btn-outline-success" title="Regenera a seção de requisitos do SPECIFICATION.md">

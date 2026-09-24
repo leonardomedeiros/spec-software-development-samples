@@ -27,6 +27,7 @@ from ..domain.enums import (
     UserRole,
 )
 from ..domain.exceptions import (
+    ActorNotFoundError,
     ContractNotFoundError,
     DomainError,
     InvalidStatusTransitionError,
@@ -36,6 +37,7 @@ from ..domain.exceptions import (
     UserNotFoundError,
 )
 from ..infra.repositories import (
+    DjangoActorRepository,
     DjangoContractRepository,
     DjangoProjectRepository,
     DjangoRequirementRepository,
@@ -44,6 +46,7 @@ from ..infra.repositories import (
 )
 from ..schemas.schemas import (
     ContractResponseSchema,
+    CreateActorSchema,
     CreateContractSchema,
     CreateProjectSchema,
     CreateRequirementSchema,
@@ -51,6 +54,7 @@ from ..schemas.schemas import (
     ProjectResponseSchema,
     RequirementResponseSchema,
     TaskResponseSchema,
+    UpdateActorSchema,
     UpdateContractSchema,
     UpdateContractStatusSchema,
     UpdateProjectSchema,
@@ -62,17 +66,22 @@ from ..schemas.schemas import (
 )
 from ..use_cases.specification_export import export_requirements_section
 from ..use_cases.use_cases import (
+    CreateActorUseCase,
     CreateContractUseCase,
     CreateProjectUseCase,
     CreateRequirementUseCase,
     CreateTaskUseCase,
     AddProjectTeamMemberUseCase,
+    DeleteActorUseCase,
     DeleteContractUseCase,
     DeleteProjectUseCase,
     DeleteRequirementUseCase,
+    LinkActorToRequirementUseCase,
     LinkRequirementToTaskUseCase,
     RemoveProjectTeamMemberUseCase,
+    UnlinkActorFromRequirementUseCase,
     UnlinkRequirementFromTaskUseCase,
+    UpdateActorUseCase,
     UpdateContractStatusUseCase,
     UpdateContractUseCase,
     UpdateProjectStatusUseCase,
@@ -89,6 +98,7 @@ project_repo = DjangoProjectRepository()
 task_repo = DjangoTaskRepository()
 contract_repo = DjangoContractRepository()
 requirement_repo = DjangoRequirementRepository()
+actor_repo = DjangoActorRepository()
 
 
 def _format_pydantic_error(e: ValidationError) -> JsonResponse:
@@ -174,17 +184,28 @@ def home_view(request):
     completed_tasks = [t for t in tasks if t.status == TaskStatus.COMPLETED]
 
     all_tasks = task_repo.list_all()
+    actors = actor_repo.list_all()
     requirements = requirement_repo.list_all()
     task_requirement_codes = {}
+    actor_requirement_names = {}
     for requirement in requirements:
         requirement.linked_tasks = requirement_repo.list_linked_tasks(requirement.id)
         requirement.linked_task_ids = {t.id for t in requirement.linked_tasks}
         for linked_task in requirement.linked_tasks:
             task_requirement_codes.setdefault(linked_task.id, []).append(requirement.code)
 
+        requirement.linked_actors = requirement_repo.list_linked_actors(requirement.id)
+        requirement.linked_actor_ids = {a.id for a in requirement.linked_actors}
+        for linked_actor in requirement.linked_actors:
+            actor_requirement_names.setdefault(linked_actor.id, []).append(requirement.code)
+
     # Anexa os códigos dos requisitos atendidos por cada tarefa (vínculo N:N, seção 2.6)
     for t in tasks:
         t.requirement_codes = task_requirement_codes.get(t.id, [])
+
+    # Anexa os códigos dos requisitos vinculados a cada ator (vínculo N:N, seção 2.7)
+    for actor in actors:
+        actor.requirement_codes = actor_requirement_names.get(actor.id, [])
 
     context = {
         "projects": projects,
@@ -200,6 +221,7 @@ def home_view(request):
         "completed_tasks": completed_tasks,
         "requirements": requirements,
         "all_tasks": all_tasks,
+        "actors": actors,
     }
     return render(request, "index.html", context)
 
@@ -664,6 +686,80 @@ def web_update_requirement_tasks_view(request, requirement_id: str):
             messages.error(request, "Tarefa inválida.")
         except DomainError as e:
             messages.error(request, f"Erro ao vincular tarefa: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_update_requirement_actors_view(request, requirement_id: str):
+    if request.method == "POST":
+        try:
+            actor_id = UUID(request.POST.get("actor_id", ""))
+            if request.POST.get("action") == "remove":
+                UnlinkActorFromRequirementUseCase(requirement_repo).execute(UUID(requirement_id), actor_id)
+                messages.success(request, "Ator desvinculado do requisito!")
+            else:
+                LinkActorToRequirementUseCase(requirement_repo, actor_repo).execute(UUID(requirement_id), actor_id)
+                messages.success(request, "Ator vinculado ao requisito!")
+        except (ValidationError, ValueError):
+            messages.error(request, "Ator inválido.")
+        except DomainError as e:
+            messages.error(request, f"Erro ao vincular ator: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_create_actor_view(request):
+    if request.method == "POST":
+        name = request.POST.get("name", "")
+        description = request.POST.get("description", "")
+
+        try:
+            dto = CreateActorSchema(name=name, description=description)
+            CreateActorUseCase(actor_repo).execute(dto)
+            messages.success(request, f"Ator '{dto.name}' cadastrado com sucesso!")
+        except ValidationError as e:
+            msg = e.errors()[0].get("msg", "Dados do ator inválidos.")
+            messages.error(request, f"Erro ao criar ator: {msg}")
+        except DomainError as e:
+            messages.error(request, f"Erro de domínio: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_update_actor_view(request, actor_id: str):
+    if request.method == "POST":
+        try:
+            name = request.POST.get("name", "").strip()
+            description = request.POST.get("description", "").strip()
+
+            dto = UpdateActorSchema(
+                name=name if name else None,
+                description=description if description else None,
+            )
+            UpdateActorUseCase(actor_repo).execute(UUID(actor_id), dto)
+            messages.success(request, "Ator atualizado com sucesso!")
+        except ValidationError as e:
+            msg = e.errors()[0].get("msg", "Dados inválidos.")
+            messages.error(request, f"Erro de validação: {msg}")
+        except ValueError as e:
+            messages.error(request, f"Dados inválidos: {str(e)}")
+        except DomainError as e:
+            messages.error(request, f"Erro de domínio: {e}")
+
+    return redirect("/")
+
+
+@login_required(login_url="/login")
+def web_delete_actor_view(request, actor_id: str):
+    if request.method == "POST":
+        try:
+            DeleteActorUseCase(actor_repo).execute(UUID(actor_id))
+            messages.success(request, "Ator excluído com sucesso!")
+        except DomainError as e:
+            messages.error(request, f"Erro ao excluir ator: {e}")
 
     return redirect("/")
 

@@ -51,3 +51,10 @@ class RequirementCodeAlreadyExistsError(DomainError):
     def __init__(self, message: str = "Já existe um requisito com este código"):
         self.message = message
         super().__init__(self.message)
+
+
+class ActorNotFoundError(DomainError):
+    """Lançada quando um ator não é encontrado."""
+    def __init__(self, message: str = "Ator não encontrado"):
+        self.message = message
+        super().__init__(self.message)

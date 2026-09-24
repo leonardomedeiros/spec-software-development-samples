@@ -3,7 +3,7 @@ from uuid import UUID
 
 from django.db import transaction
 
-from ..domain.entities import Contract, Project, Requirement, Task, User
+from ..domain.entities import Actor, Contract, Project, Requirement, Task, User
 from ..domain.enums import (
     ContractStatus,
     RequirementPriority,
@@ -14,6 +14,7 @@ from ..domain.enums import (
     UserRole,
 )
 from ..domain.repositories import (
+    IActorRepository,
     IContractRepository,
     IProjectRepository,
     IRequirementRepository,
@@ -21,6 +22,8 @@ from ..domain.repositories import (
     IUserRepository,
 )
 from .models import (
+    ActorModel,
+    ActorRequirementLinkModel,
     ContractModel,
     IdentifierSequenceModel,
     ProjectMembershipModel,
@@ -368,3 +371,84 @@ class DjangoRequirementRepository(IRequirementRepository):
 
     def unlink_task(self, requirement_id: UUID, task_id: UUID) -> None:
         RequirementTaskLinkModel.objects.filter(requirement_id=requirement_id, task_id=task_id).delete()
+
+    def list_linked_actors(self, requirement_id: UUID) -> list[Actor]:
+        return [
+            Actor(
+                id=link.actor.id,
+                display_id=link.actor.display_id,
+                name=link.actor.name,
+                description=link.actor.description,
+                created_at=link.actor.created_at,
+            )
+            for link in ActorRequirementLinkModel.objects.filter(requirement_id=requirement_id)
+                .select_related("actor").order_by("actor__name")
+        ]
+
+    def link_actor(self, requirement_id: UUID, actor_id: UUID) -> None:
+        ActorRequirementLinkModel.objects.get_or_create(requirement_id=requirement_id, actor_id=actor_id)
+
+    def unlink_actor(self, requirement_id: UUID, actor_id: UUID) -> None:
+        ActorRequirementLinkModel.objects.filter(requirement_id=requirement_id, actor_id=actor_id).delete()
+
+
+class DjangoActorRepository(IActorRepository):
+    def get_by_id(self, actor_id: UUID) -> Optional[Actor]:
+        try:
+            orm_actor = ActorModel.objects.get(id=actor_id)
+            return Actor(
+                id=orm_actor.id,
+                display_id=orm_actor.display_id,
+                name=orm_actor.name,
+                description=orm_actor.description,
+                created_at=orm_actor.created_at,
+            )
+        except ActorModel.DoesNotExist:
+            return None
+
+    def list_all(self) -> list[Actor]:
+        return [
+            Actor(
+                id=a.id,
+                display_id=a.display_id,
+                name=a.name,
+                description=a.description,
+                created_at=a.created_at,
+            )
+            for a in ActorModel.objects.all().order_by("name")
+        ]
+
+    def save(self, actor: Actor) -> Actor:
+        orm_actor, _ = ActorModel.objects.update_or_create(
+            id=actor.id,
+            defaults={
+                "display_id": actor.display_id,
+                "name": actor.name,
+                "description": actor.description,
+            },
+        )
+        actor.created_at = orm_actor.created_at
+        return actor
+
+    def next_display_id(self) -> str:
+        return f"ACT{_next_sequence_value('ACT')}"
+
+    def delete(self, actor_id: UUID) -> None:
+        ActorModel.objects.filter(id=actor_id).delete()
+
+    def list_linked_requirements(self, actor_id: UUID) -> list[Requirement]:
+        return [
+            Requirement(
+                id=link.requirement.id,
+                display_id=link.requirement.display_id,
+                code=link.requirement.code,
+                title=link.requirement.title,
+                description=link.requirement.description,
+                type=RequirementType(link.requirement.req_type),
+                priority=RequirementPriority(link.requirement.priority),
+                status=RequirementStatus(link.requirement.status),
+                created_at=link.requirement.created_at,
+            )
+            for link in ActorRequirementLinkModel.objects.filter(actor_id=actor_id)
+                .select_related("requirement").order_by("requirement__code")
+        ]

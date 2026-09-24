@@ -182,6 +182,29 @@ class RequirementTaskLinkModel(models.Model):
         ]
 
 
+class ActorModel(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    display_id = models.CharField(max_length=20, unique=True, editable=False, null=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "actors"
+
+
+class ActorRequirementLinkModel(models.Model):
+    actor = models.ForeignKey(ActorModel, on_delete=models.CASCADE, related_name="requirement_links")
+    requirement = models.ForeignKey(RequirementModel, on_delete=models.CASCADE, related_name="actor_links")
+    linked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "actor_requirement_links"
+        constraints = [
+            models.UniqueConstraint(fields=["actor", "requirement"], name="unique_actor_requirement"),
+        ]
+
+
 class TaskHistoryModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     task = models.ForeignKey(TaskModel, on_delete=models.CASCADE, related_name="history")

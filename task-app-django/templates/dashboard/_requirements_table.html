@@ -17,6 +17,7 @@
                             <th>Prioridade</th>
                             <th>Status</th>
                             <th>Tarefas Vinculadas</th>
+                            <th>Atores Vinculados</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
@@ -78,6 +79,37 @@
                                             {% endfor %}
                                         </select>
                                         <button type="submit" class="btn btn-sm btn-outline-primary" title="Vincular tarefa">
+                                            <i class="bi bi-link-45deg"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1 mb-2">
+                                        {% for actor in req.linked_actors %}
+                                            <form method="POST" action="/web/requirements/{{ req.id }}/actors" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="remove">
+                                                <input type="hidden" name="actor_id" value="{{ actor.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Desvincular {{ actor.name }}">
+                                                    {{ actor.name }} <i class="bi bi-x"></i>
+                                                </button>
+                                            </form>
+                                        {% empty %}
+                                            <span class="text-muted small">Sem atores vinculados</span>
+                                        {% endfor %}
+                                    </div>
+                                    <form method="POST" action="/web/requirements/{{ req.id }}/actors" class="d-flex gap-1">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="add">
+                                        <select name="actor_id" class="form-select form-select-sm" aria-label="Vincular ator ao requisito">
+                                            <option value="">Vincular ator...</option>
+                                            {% for actor in actors %}
+                                                {% if actor.id not in req.linked_actor_ids %}
+                                                    <option value="{{ actor.id }}">{{ actor.name }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary" title="Vincular ator">
                                             <i class="bi bi-link-45deg"></i>
                                         </button>
                                     </form>

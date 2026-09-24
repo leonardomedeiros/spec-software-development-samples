@@ -188,6 +188,22 @@ CREATE TABLE requirements (
     linked_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (requirement_id, task_id)
   );
+
+-- Tabela de Atores do Sistema
+CREATE TABLE actors (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+  -- Vínculo N:N entre atores e requisitos
+  CREATE TABLE actor_requirement_links (
+    actor_id UUID NOT NULL REFERENCES actors(id) ON DELETE CASCADE,
+    requirement_id UUID NOT NULL REFERENCES requirements(id) ON DELETE CASCADE,
+    linked_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (actor_id, requirement_id)
+  );
 ```
 
 ### 2.2 Relacionamentos
@@ -197,6 +213,7 @@ CREATE TABLE requirements (
 * **Project -> Task:** 1 Projeto possui N Tarefas (1:N). Ao excluir um Projeto, suas Tarefas são excluídas em cascata (`CASCADE`).
 * **User -> Task:** 1 Usuário pode ser atribuído como responsável a N Tarefas (1:N).
 * **Requirement <-> Task:** 1 Requisito pode ser vinculado a N Tarefas e 1 Tarefa pode atender a N Requisitos (N:N), por meio da tabela `requirement_task_links` (ver seção 2.6). Excluir um Requisito ou uma Tarefa remove os vínculos correspondentes em cascata, sem excluir a entidade do outro lado.
+* **Actor <-> Requirement:** 1 Ator pode ser vinculado a N Requisitos e 1 Requisito pode estar vinculado a N Atores (N:N), por meio da tabela `actor_requirement_links` (ver seção 2.7). Excluir um Ator ou um Requisito remove os vínculos correspondentes em cascata, sem excluir a entidade do outro lado.
 
 ### 2.4 Equipes de Projetos
 
@@ -223,6 +240,14 @@ CREATE TABLE requirements (
 * `status` é um campo próprio do requisito (não é calculado a partir das tarefas vinculadas, ao contrário do status do Projeto — ver seção 2.3), com transições: `DRAFT -> {APPROVED, DEPRECATED}`, `APPROVED -> {IMPLEMENTED, DRAFT, DEPRECATED}`, `IMPLEMENTED -> {APPROVED, DEPRECATED}`. `DEPRECATED` é um estado final e não pode retornar para outro status.
 * A combinação `requirement_id` + `task_id` é única; vincular uma tarefa já vinculada não cria duplicidade. Ao excluir um requisito ou uma tarefa, os vínculos correspondentes são removidos em cascata.
 * Os requisitos cadastrados podem ser exportados/refletidos no próprio `SPECIFICATION.md` (ver seção 7).
+
+### 2.7 Atores do Sistema e Vínculo com Requisitos
+
+* Um Ator (`name`, `description` em Markdown) é uma entidade independente do cadastro de Usuários (`users`) — representa um papel/persona de negócio que interage com o sistema (ex.: *Cliente*, *Administrador*, *Atendente*), sem estar necessariamente associado a uma conta de acesso.
+* Um Ator pode ser vinculado a um ou mais Requisitos, e um Requisito pode estar vinculado a vários Atores (N:N), por meio da tabela `actor_requirement_links`, no mesmo padrão do vínculo Requisito↔Tarefa (seção 2.6).
+* A combinação `actor_id` + `requirement_id` é única; vincular um ator já vinculado não cria duplicidade. Ao excluir um ator ou um requisito, os vínculos correspondentes são removidos em cascata.
+* A gestão do vínculo (adicionar/remover) é centralizada na tabela de Requisitos do dashboard (`POST /web/requirements/{requirement_id}/actors`, seção 3.2), no mesmo padrão adotado para o vínculo com Tarefas — evitando duas interfaces divergentes para a mesma operação. A tabela de Atores exibe, de forma recíproca e somente leitura, os requisitos vinculados a cada ator.
+* Os atores vinculados a cada requisito também são refletidos na seção 7 (Requisitos Rastreáveis) do `SPECIFICATION.md`, junto com as tarefas vinculadas.
 
 ### 2.3 Status de Contratos e Projetos
 
@@ -259,6 +284,8 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * `SIGNED` (Assinados): Contrato Aprovado — estado final, exibido com badge "Assinado" e sem botões de transição.
     * Todos os cartões, independente da coluna/status, exibem botões *"Editar"* (lápis) e *"Excluir"* (lixeira).
   * **Equipes dos Projetos:** Cada projeto deve exibir seus membros e oferecer controles para adicionar ou remover usuários, sem permitir duplicidades. A tabela de projetos também exibe botões *"Editar"* (lápis) e *"Excluir"* (lixeira) por projeto.
+  * **Atores do Sistema (ver seção 2.7):** Tabela dedicada ao gerenciamento de atores (`name`, `description`), independente do cadastro de Usuários. Cada linha exibe nome, descrição, os requisitos vinculados (badges, somente leitura — o vínculo é gerido pela tabela de Requisitos) e botões *"Editar"* (lápis) e *"Excluir"* (lixeira). O botão **"Novo Ator"** na barra de ferramentas abre o modal de cadastro.
+  * **Rastreabilidade Ator ↔ Requisito (vínculo N:N, seção 2.7):** a tabela de Requisitos exibe, junto às tarefas vinculadas, os atores vinculados a cada requisito, com controles para vincular/desvincular (`POST /web/requirements/{requirement_id}/actors`, seção 3.2). A tabela de Atores mostra, de forma recíproca e somente leitura, quais requisitos cada ator está vinculado.
   * **Quadro Kanban de Tarefas:** Dividido em 3 colunas de status:
     * `PENDING` (Pendentes): Cartões com badge de prioridade, prazo, botão *"Iniciar"* para transição direta para `IN_PROGRESS`, botão *"Editar"* (lápis) e botão *"Excluir"* (lixeira).
     * `IN_PROGRESS` (Em Andamento): Cartões com botões *"Voltar"* (para `PENDING`) e *"Concluir"* (para `COMPLETED`), além de botões expandidos *"Editar"* e *"Excluir"*.
@@ -272,6 +299,8 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * Modal de Cadastro de Tarefa (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown, com seleção de prioridade, projeto, responsável e data de vencimento).
     * Modal de Edição de Tarefa (permite atualizar todos os campos incluindo descrição em Markdown com 400px min-height = ~20 linhas, redimensionável, github_url; pré-preenchido com dados da tarefa selecionada).
     * Modal de Cadastro de Usuários (para membros da equipe).
+    * Modal de Cadastro de Ator (nome e descrição em Markdown).
+    * Modal de Edição de Ator (pré-preenchido com dados do ator selecionado).
 
 ### 3.2 Ações e Formulários Web
 * **Adicionar Contrato:** `POST /web/contracts` (Campos: `title`, `description`, `contract_file`, `owner_id`). Um contrato não recebe `contract_id`.
@@ -333,7 +362,11 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Editar Requisito:** `POST /web/requirements/{requirement_id}` (Campos opcionais: `code`, `title`, `description`, `type`, `priority` — atualização parcial, igual à edição de tarefa).
 * **Alterar status do Requisito:** `POST /web/requirements/{requirement_id}/status` (Campo: `status`, conforme transições da seção 2.6).
 * **Vincular/Desvincular Tarefa ao Requisito:** `POST /web/requirements/{requirement_id}/tasks` (Campos: `action` com `add` ou `remove`, e `task_id`).
+* **Vincular/Desvincular Ator ao Requisito:** `POST /web/requirements/{requirement_id}/actors` (Campos: `action` com `add` ou `remove`, e `actor_id`, conforme seção 2.7).
 * **Excluir Requisito:** `POST /web/requirements/{requirement_id}/delete` (Sem campos).
+* **Cadastrar Ator:** `POST /web/actors` (Campos: `name`, `description`).
+* **Editar Ator:** `POST /web/actors/{actor_id}` (Campos opcionais: `name`, `description` — atualização parcial, igual à edição de requisito).
+* **Excluir Ator:** `POST /web/actors/{actor_id}/delete` (Sem campos). Os vínculos com Requisitos são removidos em cascata (seção 2.7).
 * **Exportar Requisitos para SPECIFICATION.md:** `POST /web/specification/export` (Sem campos). Regenera apenas o bloco gerado automaticamente da seção 7 (Requisitos Rastreáveis), preservando o restante do documento.
 
 ---
@@ -681,10 +714,11 @@ Estes cenários devem orientar a geração de testes automatizados com `pytest` 
 ## 7. Requisitos Rastreáveis (Requirements)
 
 Esta seção mantém a rastreabilidade entre os **Requisitos** cadastrados (ver seção 2.6) e as **Tarefas**
-que os implementam. Cada Requisito tem um código único (`code`), título, descrição em Markdown, tipo
+que os implementam, bem como os **Atores** (ver seção 2.7) que os requisitam ou utilizam. Cada Requisito
+tem um código único (`code`), título, descrição em Markdown, tipo
 (`FUNCTIONAL`/`NON_FUNCTIONAL`/`BUSINESS_RULE`/`TECHNICAL_CONSTRAINT`), prioridade (`LOW`/`MEDIUM`/`HIGH`)
 e um status próprio (`DRAFT`/`APPROVED`/`IMPLEMENTED`/`DEPRECATED`), e pode estar vinculado a uma ou mais
-tarefas.
+tarefas e a um ou mais atores.
 
 O bloco abaixo, delimitado pelos marcadores `REQUISITOS:START`/`REQUISITOS:END`, é **gerado
 automaticamente** — não deve ser editado manualmente. Para regenerá-lo a partir dos dados atuais:
@@ -695,20 +729,6 @@ Qualquer uma das duas opções substitui apenas o conteúdo entre os marcadores,
 deste documento.
 
 <!-- REQUISITOS:START -->
-**RF-01 — Req One**
-*Tipo: Requisito Funcional | Prioridade: MEDIUM | Status: DRAFT*
-
-Tarefas vinculadas: _nenhuma tarefa vinculada._
-
-**RF-02 — Req Two**
-*Tipo: Requisito Funcional | Prioridade: MEDIUM | Status: DRAFT*
-
-Tarefas vinculadas: _nenhuma tarefa vinculada._
-
-**RF-5b4806 — Req**
-*Tipo: Requisito Funcional | Prioridade: MEDIUM | Status: DRAFT*
-
-Tarefas vinculadas:
-* T1 (`PENDING`)
+_Nenhum requisito cadastrado ainda. Use o dashboard ou `export_specification` para gerar esta seção._
 <!-- REQUISITOS:END -->
 
