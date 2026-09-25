@@ -62,38 +62,35 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalEl = document.getElementById('modalEditTask');
     const formEl = document.getElementById('formEditTask');
 
-    if (modalEl) {
-        modalEl.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            if (!button) return;
+    if (modalEl && formEl) {
+        document.querySelectorAll('[data-bs-target="#modalEditTask"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const taskId = this.getAttribute('data-task-id');
+                const taskTitle = this.getAttribute('data-task-title') || '';
+                const taskDesc = this.getAttribute('data-task-description') || '';
+                const taskPrio = this.getAttribute('data-task-priority') || '';
+                const taskAssignee = this.getAttribute('data-task-assignee') || '';
+                const taskDueDateRaw = this.getAttribute('data-task-due-date') || '';
+                const taskGithubUrl = this.getAttribute('data-task-github-url') || '';
 
-            const taskId = button.getAttribute('data-task-id');
-            const taskTitle = button.getAttribute('data-task-title') || '';
-            const taskDesc = button.getAttribute('data-task-description') || '';
-            const taskPrio = button.getAttribute('data-task-priority') || '';
-            const taskAssignee = button.getAttribute('data-task-assignee') || '';
-            const taskDueDateRaw = button.getAttribute('data-task-due-date') || '';
-            const taskGithubUrl = button.getAttribute('data-task-github-url') || '';
-
-            // Convert datetime/date string to YYYY-MM-DD format for date input
-            let taskDueDate = '';
-            if (taskDueDateRaw) {
-                // Handle both ISO datetime and date formats
-                const dateObj = new Date(taskDueDateRaw);
-                if (!isNaN(dateObj.getTime())) {
-                    taskDueDate = dateObj.toISOString().split('T')[0];
+                let taskDueDate = '';
+                if (taskDueDateRaw) {
+                    const dateObj = new Date(taskDueDateRaw);
+                    if (!isNaN(dateObj.getTime())) {
+                        taskDueDate = dateObj.toISOString().split('T')[0];
+                    }
                 }
-            }
 
-            document.getElementById('currentTaskId').value = taskId;
-            document.getElementById('editTaskTitle').value = taskTitle;
-            document.getElementById('editTaskDescription').value = taskDesc;
-            document.getElementById('editTaskPriority').value = taskPrio;
-            document.getElementById('editTaskAssignee').value = taskAssignee;
-            document.getElementById('editTaskDueDate').value = taskDueDate;
-            document.getElementById('editTaskGithubUrl').value = taskGithubUrl;
+                document.getElementById('currentTaskId').value = taskId;
+                document.getElementById('editTaskTitle').value = taskTitle;
+                document.getElementById('editTaskDescription').value = taskDesc;
+                document.getElementById('editTaskPriority').value = taskPrio;
+                document.getElementById('editTaskAssignee').value = taskAssignee;
+                document.getElementById('editTaskDueDate').value = taskDueDate;
+                document.getElementById('editTaskGithubUrl').value = taskGithubUrl;
 
-            formEl.action = `/web/tasks/${taskId}`;
+                formEl.action = `/web/tasks/${taskId}`;
+            });
         });
 
         formEl.addEventListener('submit', function(e) {
@@ -162,100 +159,83 @@ function _syncCheckboxesFromIds(containerId, idsAttr) {
 
 // Handle edit requirement modal prefill
 document.addEventListener('DOMContentLoaded', function() {
-    const modalEditReq = document.getElementById('modalEditRequirement');
     const formEditReq = document.getElementById('formEditRequirement');
-    if (modalEditReq && formEditReq) {
-        modalEditReq.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            if (!button) return;
-
-            const reqId = button.getAttribute('data-req-id');
-            document.getElementById('editReqCode').value = button.getAttribute('data-req-code') || '';
-            document.getElementById('editReqTitle').value = button.getAttribute('data-req-title') || '';
-            document.getElementById('editReqDescription').value = button.getAttribute('data-req-description') || '';
-            document.getElementById('editReqType').value = button.getAttribute('data-req-type') || '';
-            document.getElementById('editReqPriority').value = button.getAttribute('data-req-priority') || '';
-            _syncCheckboxesFromIds('editReqTasks', button.getAttribute('data-req-task-ids'));
-            _syncCheckboxesFromIds('editReqActors', button.getAttribute('data-req-actor-ids'));
-
-            formEditReq.action = `/web/requirements/${reqId}`;
+    if (formEditReq) {
+        document.querySelectorAll('[data-bs-target="#modalEditRequirement"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const reqId = this.getAttribute('data-req-id');
+                document.getElementById('editReqCode').value = this.getAttribute('data-req-code') || '';
+                document.getElementById('editReqTitle').value = this.getAttribute('data-req-title') || '';
+                document.getElementById('editReqDescription').value = this.getAttribute('data-req-description') || '';
+                document.getElementById('editReqType').value = this.getAttribute('data-req-type') || '';
+                document.getElementById('editReqPriority').value = this.getAttribute('data-req-priority') || '';
+                _syncCheckboxesFromIds('editReqTasks', this.getAttribute('data-req-task-ids'));
+                _syncCheckboxesFromIds('editReqActors', this.getAttribute('data-req-actor-ids'));
+                formEditReq.action = `/web/requirements/${reqId}`;
+            });
         });
     }
 });
 
 // Handle view requirement modal (somente leitura)
 document.addEventListener('DOMContentLoaded', function() {
-    const modalViewReq = document.getElementById('modalViewRequirement');
-    if (modalViewReq) {
-        modalViewReq.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            if (!button) return;
-
-            document.getElementById('viewReqCode').value = button.getAttribute('data-req-code') || '';
-            document.getElementById('viewReqTitle').value = button.getAttribute('data-req-title') || '';
-            document.getElementById('viewReqDescription').value = button.getAttribute('data-req-description') || '';
-            document.getElementById('viewReqType').value = button.getAttribute('data-req-type') || '';
-            document.getElementById('viewReqPriority').value = button.getAttribute('data-req-priority') || '';
-            document.getElementById('viewReqStatus').value = button.getAttribute('data-req-status') || '';
-
-            _syncCheckboxesFromIds('viewReqTasks', button.getAttribute('data-req-task-ids'));
-            _syncCheckboxesFromIds('viewReqActors', button.getAttribute('data-req-actor-ids'));
+    document.querySelectorAll('[data-bs-target="#modalViewRequirement"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.getElementById('viewReqCode').value = this.getAttribute('data-req-code') || '';
+            document.getElementById('viewReqTitle').value = this.getAttribute('data-req-title') || '';
+            document.getElementById('viewReqDescription').value = this.getAttribute('data-req-description') || '';
+            document.getElementById('viewReqType').value = this.getAttribute('data-req-type') || '';
+            document.getElementById('viewReqPriority').value = this.getAttribute('data-req-priority') || '';
+            document.getElementById('viewReqStatus').value = this.getAttribute('data-req-status') || '';
+            _syncCheckboxesFromIds('viewReqTasks', this.getAttribute('data-req-task-ids'));
+            _syncCheckboxesFromIds('viewReqActors', this.getAttribute('data-req-actor-ids'));
         });
-    }
+    });
 });
 
 // Handle edit contract modal prefill
 document.addEventListener('DOMContentLoaded', function() {
-    const modalEditContract = document.getElementById('modalEditContract');
     const formEditContract = document.getElementById('formEditContract');
-    if (modalEditContract && formEditContract) {
-        modalEditContract.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            if (!button) return;
-
-            const contractId = button.getAttribute('data-contract-id');
-            document.getElementById('editContractTitle').value = button.getAttribute('data-contract-title') || '';
-            document.getElementById('editContractDescription').value = button.getAttribute('data-contract-description') || '';
-            document.getElementById('editContractOwner').value = button.getAttribute('data-contract-owner') || '';
-
-            formEditContract.action = `/web/contracts/${contractId}`;
+    if (formEditContract) {
+        document.querySelectorAll('[data-bs-target="#modalEditContract"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const contractId = this.getAttribute('data-contract-id');
+                document.getElementById('editContractTitle').value = this.getAttribute('data-contract-title') || '';
+                document.getElementById('editContractDescription').value = this.getAttribute('data-contract-description') || '';
+                document.getElementById('editContractOwner').value = this.getAttribute('data-contract-owner') || '';
+                formEditContract.action = `/web/contracts/${contractId}`;
+            });
         });
     }
 });
 
 // Handle edit project modal prefill
 document.addEventListener('DOMContentLoaded', function() {
-    const modalEditProject = document.getElementById('modalEditProject');
     const formEditProject = document.getElementById('formEditProject');
-    if (modalEditProject && formEditProject) {
-        modalEditProject.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            if (!button) return;
-
-            const projectId = button.getAttribute('data-project-id');
-            document.getElementById('editProjectTitle').value = button.getAttribute('data-project-title') || '';
-            document.getElementById('editProjectDescription').value = button.getAttribute('data-project-description') || '';
-            document.getElementById('editProjectOwner').value = button.getAttribute('data-project-owner') || '';
-
-            formEditProject.action = `/web/projects/${projectId}`;
+    if (formEditProject) {
+        document.querySelectorAll('[data-bs-target="#modalEditProject"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const projectId = this.getAttribute('data-project-id');
+                document.getElementById('editProjectTitle').value = this.getAttribute('data-project-title') || '';
+                document.getElementById('editProjectDescription').value = this.getAttribute('data-project-description') || '';
+                document.getElementById('editProjectOwner').value = this.getAttribute('data-project-owner') || '';
+                formEditProject.action = `/web/projects/${projectId}`;
+            });
         });
     }
 });
 
 // Handle edit actor modal prefill
 document.addEventListener('DOMContentLoaded', function() {
-    const modalEditActor = document.getElementById('modalEditActor');
     const formEditActor = document.getElementById('formEditActor');
-    if (modalEditActor && formEditActor) {
-        modalEditActor.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            if (!button) return;
-
-            const actorId = button.getAttribute('data-actor-id');
-            document.getElementById('editActorName').value = button.getAttribute('data-actor-name') || '';
-            document.getElementById('editActorDescription').value = button.getAttribute('data-actor-description') || '';
-
-            formEditActor.action = `/web/actors/${actorId}`;
+    if (formEditActor) {
+        document.querySelectorAll('[data-bs-target="#modalEditActor"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const actorId = this.getAttribute('data-actor-id');
+                document.getElementById('editActorName').value = this.getAttribute('data-actor-name') || '';
+                document.getElementById('editActorDescription').value = this.getAttribute('data-actor-description') || '';
+                formEditActor.action = `/web/actors/${actorId}`;
+            });
         });
     }
 });
