@@ -291,11 +291,11 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         """Vínculo N:N (seção 2.6): o cartão da tarefa no Kanban exibe os códigos
         de TODOS os requisitos vinculados a ela, e um mesmo requisito pode
         aparecer em vários cartões de tarefa diferentes."""
-        req1 = CreateRequirementUseCase(self.requirement_repo).execute(
-            CreateRequirementSchema(code="RF-01", title="Login", type=RequirementType.FUNCTIONAL)
+        req1 = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(
+            CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Login", type=RequirementType.FUNCTIONAL)
         )
-        req2 = CreateRequirementUseCase(self.requirement_repo).execute(
-            CreateRequirementSchema(code="RF-02", title="Logout", type=RequirementType.FUNCTIONAL)
+        req2 = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(
+            CreateRequirementSchema(project_id=self.project.id, code="RF-02", title="Logout", type=RequirementType.FUNCTIONAL)
         )
         other_task = self.task_repo.save(
             Task(project_id=self.project.id, title="Outra Tarefa", status=TaskStatus.PENDING)
@@ -569,37 +569,38 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
 
     def test_create_requirement_use_case_success(self):
         dto = CreateRequirementSchema(
+            project_id=self.project.id,
             code="RF-01",
             title="Autenticação de Usuários",
             description="O sistema deve permitir login via e-mail e senha.",
             type=RequirementType.FUNCTIONAL,
             priority=RequirementPriority.HIGH,
         )
-        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(dto)
         self.assertEqual(requirement.code, "RF-01")
         self.assertEqual(requirement.status, RequirementStatus.DRAFT)
 
     def test_create_requirement_duplicate_code_rejected(self):
-        dto = CreateRequirementSchema(code="RF-01", title="Primeiro Requisito", type=RequirementType.FUNCTIONAL)
-        CreateRequirementUseCase(self.requirement_repo).execute(dto)
+        dto = CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Primeiro Requisito", type=RequirementType.FUNCTIONAL)
+        CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(dto)
 
-        dto_duplicado = CreateRequirementSchema(code="RF-01", title="Segundo Requisito", type=RequirementType.FUNCTIONAL)
+        dto_duplicado = CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Segundo Requisito", type=RequirementType.FUNCTIONAL)
         with self.assertRaises(RequirementCodeAlreadyExistsError):
-            CreateRequirementUseCase(self.requirement_repo).execute(dto_duplicado)
+            CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(dto_duplicado)
 
     def test_update_requirement_partial(self):
-        dto = CreateRequirementSchema(code="RF-01", title="Título Original", type=RequirementType.FUNCTIONAL)
-        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+        dto = CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Título Original", type=RequirementType.FUNCTIONAL)
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(dto)
 
-        updated = UpdateRequirementUseCase(self.requirement_repo).execute(
+        updated = UpdateRequirementUseCase(self.requirement_repo, self.project_repo).execute(
             requirement.id, UpdateRequirementSchema(title="Título Atualizado")
         )
         self.assertEqual(updated.title, "Título Atualizado")
         self.assertEqual(updated.code, "RF-01")
 
     def test_link_and_unlink_requirement_to_task(self):
-        dto = CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
-        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+        dto = CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(dto)
 
         LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(requirement.id, self.task.id)
         linked = self.requirement_repo.list_linked_tasks(requirement.id)
@@ -609,8 +610,8 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         self.assertEqual(self.requirement_repo.list_linked_tasks(requirement.id), [])
 
     def test_link_requirement_task_not_found(self):
-        dto = CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
-        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+        dto = CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(dto)
 
         with self.assertRaises(TaskNotFoundError):
             LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(requirement.id, uuid.uuid4())
@@ -622,17 +623,24 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
     def test_web_create_requirement_success(self):
         response = self.client.post(
             "/web/requirements",
-            {"code": "RF-01", "title": "Autenticação de Usuários", "type": "FUNCTIONAL", "priority": "HIGH"},
+            {
+                "project_id": str(self.project.id),
+                "code": "RF-01",
+                "title": "Autenticação de Usuários",
+                "type": "FUNCTIONAL",
+                "priority": "HIGH",
+            },
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(len(self.requirement_repo.list_all()), 1)
 
     def test_web_create_requirement_with_tasks_and_actors_linked(self):
-        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+        actor = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(CreateActorSchema(contract_id=self.contract.id, name="Cliente"))
 
         response = self.client.post(
             "/web/requirements",
             {
+                "project_id": str(self.project.id),
                 "code": "RF-01",
                 "title": "Autenticação de Usuários",
                 "type": "FUNCTIONAL",
@@ -655,6 +663,7 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         response = self.client.post(
             "/web/requirements",
             {
+                "project_id": str(self.project.id),
                 "code": "RF-01",
                 "title": "Autenticação de Usuários",
                 "type": "FUNCTIONAL",
@@ -666,8 +675,8 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         self.assertEqual(self.requirement_repo.list_all(), [])
 
     def test_web_link_task_to_requirement(self):
-        dto = CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
-        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+        dto = CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(dto)
 
         response = self.client.post(
             f"/web/requirements/{requirement.id}/tasks",
@@ -680,19 +689,24 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
     def test_api_create_requirement_endpoint(self):
         response = self.client.post(
             "/api/v1/requirements",
-            data={"code": "RF-01", "title": "Autenticação de Usuários", "type": "FUNCTIONAL"},
+            data={
+                "project_id": str(self.project.id),
+                "code": "RF-01",
+                "title": "Autenticação de Usuários",
+                "type": "FUNCTIONAL",
+            },
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["code"], "RF-01")
 
     def test_api_create_requirement_duplicate_code(self):
-        dto = CreateRequirementSchema(code="RF-01", title="Primeiro", type=RequirementType.FUNCTIONAL)
-        CreateRequirementUseCase(self.requirement_repo).execute(dto)
+        dto = CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Primeiro", type=RequirementType.FUNCTIONAL)
+        CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(dto)
 
         response = self.client.post(
             "/api/v1/requirements",
-            data={"code": "RF-01", "title": "Segundo", "type": "FUNCTIONAL"},
+            data={"project_id": str(self.project.id), "code": "RF-01", "title": "Segundo", "type": "FUNCTIONAL"},
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
@@ -706,8 +720,8 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         spec_path = Path(spec_dir) / "SPECIFICATION.md"
         spec_path.write_text(spec_content, encoding="utf-8")
 
-        dto = CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
-        requirement = CreateRequirementUseCase(self.requirement_repo).execute(dto)
+        dto = CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(dto)
         LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(requirement.id, self.task.id)
 
         export_requirements_section(self.requirement_repo, self.task_repo, spec_path)
@@ -724,15 +738,15 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
     # ACTOR (ATORES DO SISTEMA) TESTS
     # -------------------------------------------------------------
     def test_create_actor_use_case_success(self):
-        dto = CreateActorSchema(name="Cliente", description="Compra produtos no sistema.")
-        actor = CreateActorUseCase(self.actor_repo).execute(dto)
+        dto = CreateActorSchema(contract_id=self.contract.id, name="Cliente", description="Compra produtos no sistema.")
+        actor = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(dto)
         self.assertEqual(actor.name, "Cliente")
         self.assertTrue(actor.display_id.startswith("ACT"))
 
     def test_update_actor_partial(self):
-        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+        actor = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(CreateActorSchema(contract_id=self.contract.id, name="Cliente"))
 
-        updated = UpdateActorUseCase(self.actor_repo).execute(
+        updated = UpdateActorUseCase(self.actor_repo, self.contract_repo).execute(
             actor.id, UpdateActorSchema(description="Nova descrição")
         )
         self.assertEqual(updated.name, "Cliente")
@@ -740,10 +754,10 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
 
     def test_update_actor_not_found(self):
         with self.assertRaises(ActorNotFoundError):
-            UpdateActorUseCase(self.actor_repo).execute(uuid.uuid4(), UpdateActorSchema(name="Novo"))
+            UpdateActorUseCase(self.actor_repo, self.contract_repo).execute(uuid.uuid4(), UpdateActorSchema(name="Novo"))
 
     def test_delete_actor_success(self):
-        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Administrador"))
+        actor = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(CreateActorSchema(contract_id=self.contract.id, name="Administrador"))
         DeleteActorUseCase(self.actor_repo).execute(actor.id)
         self.assertIsNone(self.actor_repo.get_by_id(actor.id))
 
@@ -752,9 +766,9 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
             DeleteActorUseCase(self.actor_repo).execute(uuid.uuid4())
 
     def test_link_and_unlink_actor_to_requirement(self):
-        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
-        requirement = CreateRequirementUseCase(self.requirement_repo).execute(
-            CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        actor = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(CreateActorSchema(contract_id=self.contract.id, name="Cliente"))
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(
+            CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
         )
 
         LinkActorToRequirementUseCase(self.requirement_repo, self.actor_repo).execute(requirement.id, actor.id)
@@ -767,38 +781,41 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         self.assertEqual(self.requirement_repo.list_linked_actors(requirement.id), [])
 
     def test_link_actor_requirement_not_found(self):
-        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+        actor = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(CreateActorSchema(contract_id=self.contract.id, name="Cliente"))
         with self.assertRaises(RequirementNotFoundError):
             LinkActorToRequirementUseCase(self.requirement_repo, self.actor_repo).execute(uuid.uuid4(), actor.id)
 
     def test_link_requirement_actor_not_found(self):
-        requirement = CreateRequirementUseCase(self.requirement_repo).execute(
-            CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(
+            CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
         )
         with self.assertRaises(ActorNotFoundError):
             LinkActorToRequirementUseCase(self.requirement_repo, self.actor_repo).execute(requirement.id, uuid.uuid4())
 
     def test_web_create_actor_success(self):
-        response = self.client.post("/web/actors", {"name": "Cliente", "description": "Compra produtos."})
+        response = self.client.post(
+            "/web/actors",
+            {"contract_id": str(self.contract.id), "name": "Cliente", "description": "Compra produtos."},
+        )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(len(self.actor_repo.list_all()), 1)
 
     def test_web_update_actor_success(self):
-        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+        actor = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(CreateActorSchema(contract_id=self.contract.id, name="Cliente"))
         response = self.client.post(f"/web/actors/{actor.id}", {"name": "Cliente VIP"})
         self.assertEqual(response.status_code, 302)
         self.assertEqual(self.actor_repo.get_by_id(actor.id).name, "Cliente VIP")
 
     def test_web_delete_actor_success(self):
-        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
+        actor = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(CreateActorSchema(contract_id=self.contract.id, name="Cliente"))
         response = self.client.post(f"/web/actors/{actor.id}/delete")
         self.assertEqual(response.status_code, 302)
         self.assertIsNone(self.actor_repo.get_by_id(actor.id))
 
     def test_web_link_actor_to_requirement(self):
-        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
-        requirement = CreateRequirementUseCase(self.requirement_repo).execute(
-            CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        actor = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(CreateActorSchema(contract_id=self.contract.id, name="Cliente"))
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(
+            CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
         )
 
         response = self.client.post(
@@ -815,9 +832,9 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         spec_path = Path(spec_dir) / "SPECIFICATION.md"
         spec_path.write_text(spec_content, encoding="utf-8")
 
-        actor = CreateActorUseCase(self.actor_repo).execute(CreateActorSchema(name="Cliente"))
-        requirement = CreateRequirementUseCase(self.requirement_repo).execute(
-            CreateRequirementSchema(code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
+        actor = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(CreateActorSchema(contract_id=self.contract.id, name="Cliente"))
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(
+            CreateRequirementSchema(project_id=self.project.id, code="RF-01", title="Autenticação", type=RequirementType.FUNCTIONAL)
         )
         LinkActorToRequirementUseCase(self.requirement_repo, self.actor_repo).execute(requirement.id, actor.id)
 
@@ -827,3 +844,114 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         self.assertIn("Atores vinculados:", new_content)
         self.assertIn("Cliente", new_content)
         shutil.rmtree(spec_dir, ignore_errors=True)
+
+    # -------------------------------------------------------------
+    # VISIBILIDADE / AUTORIZAÇÃO POR PERFIL (ver seção 2.8 do SPECIFICATION.md)
+    # -------------------------------------------------------------
+    def _login_as(self, domain_user: User) -> None:
+        auth_user = AuthUser.objects.create_user(
+            username=domain_user.email,
+            email=domain_user.email,
+            password="tasktrack-teste-2024",
+        )
+        self.client.force_login(auth_user)
+
+    def test_visibility_admin_sees_everything_by_default(self):
+        # self.user (ADMIN) já está logado no setUp.
+        response = self.client.get("/")
+        self.assertContains(response, self.project.title)
+        self.assertContains(response, self.contract.title)
+
+    def test_visibility_member_sees_nothing_without_contract_selection(self):
+        member = self.user_repo.save(
+            User(id=uuid.uuid4(), name="Membro", email="member@tasktrack.com", role=UserRole.MEMBER)
+        )
+        self._login_as(member)
+        response = self.client.get("/")
+        self.assertNotContains(response, str(self.project.id))
+
+    def test_visibility_member_sees_all_projects_of_selected_contract(self):
+        member = self.user_repo.save(
+            User(id=uuid.uuid4(), name="Membro", email="member2@tasktrack.com", role=UserRole.MEMBER)
+        )
+        self._login_as(member)
+        response = self.client.get(f"/?contract_id={self.contract.id}")
+        self.assertContains(response, self.project.title)
+
+    def test_visibility_developer_does_not_see_projects_they_are_not_part_of(self):
+        developer = self.user_repo.save(
+            User(id=uuid.uuid4(), name="Dev", email="dev@tasktrack.com", role=UserRole.DEVELOPER)
+        )
+        self._login_as(developer)
+        response = self.client.get("/")
+        self.assertNotContains(response, str(self.project.id))
+
+    def test_visibility_developer_sees_project_they_are_team_member_of(self):
+        developer = self.user_repo.save(
+            User(id=uuid.uuid4(), name="Dev", email="dev2@tasktrack.com", role=UserRole.DEVELOPER)
+        )
+        self.project_repo.add_team_member(self.project.id, developer.id)
+        self._login_as(developer)
+        response = self.client.get("/")
+        self.assertContains(response, self.project.title)
+
+    def test_visibility_developer_sees_own_project_as_owner(self):
+        developer = self.user_repo.save(
+            User(id=uuid.uuid4(), name="Dev Owner", email="devowner@tasktrack.com", role=UserRole.DEVELOPER)
+        )
+        own_project = self.project_repo.save(
+            Project(
+                id=uuid.uuid4(),
+                contract_id=self.contract.id,
+                title="Projeto do Dev",
+                owner_id=developer.id,
+            )
+        )
+        self._login_as(developer)
+        response = self.client.get("/")
+        self.assertContains(response, own_project.title)
+        self.assertNotContains(response, str(self.project.id))
+
+    def test_developer_cannot_delete_project_they_do_not_own(self):
+        developer = self.user_repo.save(
+            User(id=uuid.uuid4(), name="Dev", email="dev3@tasktrack.com", role=UserRole.DEVELOPER)
+        )
+        self._login_as(developer)
+        response = self.client.post(f"/web/projects/{self.project.id}/delete")
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNotNone(self.project_repo.get_by_id(self.project.id))
+
+    def test_developer_cannot_create_task_in_project_they_do_not_own(self):
+        developer = self.user_repo.save(
+            User(id=uuid.uuid4(), name="Dev", email="dev4@tasktrack.com", role=UserRole.DEVELOPER)
+        )
+        self._login_as(developer)
+        response = self.client.post(
+            "/web/tasks",
+            {"project_id": str(self.project.id), "title": "Tarefa Suspeita", "priority": "MEDIUM"},
+        )
+        self.assertEqual(response.status_code, 302)
+        titles = [t.title for t in self.task_repo.list_by_project(self.project.id)]
+        self.assertNotIn("Tarefa Suspeita", titles)
+
+    def test_developer_does_not_see_actor_of_inaccessible_contract(self):
+        actor = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(
+            CreateActorSchema(contract_id=self.contract.id, name="AtorRestrito")
+        )
+        developer = self.user_repo.save(
+            User(id=uuid.uuid4(), name="Dev", email="dev5@tasktrack.com", role=UserRole.DEVELOPER)
+        )
+        self._login_as(developer)
+        response = self.client.get("/")
+        self.assertNotContains(response, actor.name)
+
+    def test_developer_does_not_see_requirement_of_inaccessible_project(self):
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(
+            CreateRequirementSchema(project_id=self.project.id, code="RF-99", title="Requisito Restrito", type=RequirementType.FUNCTIONAL)
+        )
+        developer = self.user_repo.save(
+            User(id=uuid.uuid4(), name="Dev", email="dev6@tasktrack.com", role=UserRole.DEVELOPER)
+        )
+        self._login_as(developer)
+        response = self.client.get("/")
+        self.assertNotContains(response, requirement.code)

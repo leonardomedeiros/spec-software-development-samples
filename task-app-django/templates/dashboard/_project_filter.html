@@ -3,9 +3,9 @@
     <div class="card-body py-2 d-flex align-items-center gap-3">
         <span class="fw-semibold text-muted"><i class="bi bi-funnel me-1"></i> Filtrar por Projeto:</span>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="/" class="btn btn-sm {% if not selected_project_id %}btn-dark{% else %}btn-outline-secondary{% endif %}">Todos</a>
+            <a href="/{% if selected_contract_id %}?contract_id={{ selected_contract_id }}{% endif %}" class="btn btn-sm {% if not selected_project_id %}btn-dark{% else %}btn-outline-secondary{% endif %}">Todos</a>
             {% for proj in projects %}
-                <a href="/?project_id={{ proj.id }}" class="btn btn-sm {% if selected_project_id == proj.id|stringformat:'s' %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+                <a href="/?project_id={{ proj.id }}{% if selected_contract_id %}&contract_id={{ selected_contract_id }}{% endif %}" class="btn btn-sm {% if selected_project_id == proj.id|stringformat:'s' %}btn-dark{% else %}btn-outline-secondary{% endif %}">
                     {{ proj.title }}
                 </a>
             {% endfor %}

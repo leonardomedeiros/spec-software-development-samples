@@ -132,6 +132,7 @@ class TaskModel(models.Model):
 class RequirementModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     display_id = models.CharField(max_length=20, unique=True, editable=False, null=True)
+    project = models.ForeignKey(ProjectModel, on_delete=models.CASCADE, related_name="requirements")
     code = models.CharField(max_length=20, unique=True)
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True, default="")
@@ -185,6 +186,7 @@ class RequirementTaskLinkModel(models.Model):
 class ActorModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     display_id = models.CharField(max_length=20, unique=True, editable=False, null=True)
+    contract = models.ForeignKey(ContractModel, on_delete=models.CASCADE, related_name="actors")
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)

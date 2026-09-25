@@ -172,6 +172,7 @@ CREATE TABLE task_history (
 -- Tabela de Requisitos
 CREATE TABLE requirements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE, -- seção 2.6 e 2.8
     code VARCHAR(20) UNIQUE NOT NULL, -- código único, ex: 'RF-01'
     title VARCHAR(150) NOT NULL,
     description TEXT,
@@ -192,6 +193,7 @@ CREATE TABLE requirements (
 -- Tabela de Atores do Sistema
 CREATE TABLE actors (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    contract_id UUID NOT NULL REFERENCES contracts(id) ON DELETE CASCADE, -- seção 2.7 e 2.8
     name VARCHAR(100) NOT NULL,
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -212,6 +214,8 @@ CREATE TABLE actors (
 * **User -> Project:** 1 Usuário pode ser proprietário (*owner*) de N Projetos (1:N).
 * **Project -> Task:** 1 Projeto possui N Tarefas (1:N). Ao excluir um Projeto, suas Tarefas são excluídas em cascata (`CASCADE`).
 * **User -> Task:** 1 Usuário pode ser atribuído como responsável a N Tarefas (1:N).
+* **Project -> Requirement:** 1 Projeto possui N Requisitos (1:N). Ao excluir um Projeto, seus Requisitos são excluídos em cascata (`CASCADE`) — ver seção 2.6.
+* **Contract -> Actor:** 1 Contrato possui N Atores (1:N). Ao excluir um Contrato, seus Atores são excluídos em cascata (`CASCADE`) — ver seção 2.7.
 * **Requirement <-> Task:** 1 Requisito pode ser vinculado a N Tarefas e 1 Tarefa pode atender a N Requisitos (N:N), por meio da tabela `requirement_task_links` (ver seção 2.6). Excluir um Requisito ou uma Tarefa remove os vínculos correspondentes em cascata, sem excluir a entidade do outro lado.
 * **Actor <-> Requirement:** 1 Ator pode ser vinculado a N Requisitos e 1 Requisito pode estar vinculado a N Atores (N:N), por meio da tabela `actor_requirement_links` (ver seção 2.7). Excluir um Ator ou um Requisito remove os vínculos correspondentes em cascata, sem excluir a entidade do outro lado.
 
@@ -226,7 +230,8 @@ CREATE TABLE actors (
 
 * O acesso à interface web deve usar a autenticação nativa do Django (`django.contrib.auth`), com sessão, login por e-mail e senha e logout.
 * O usuário de autenticação do Django deve ser criado com `username` igual ao e-mail; a senha deve ser armazenada somente pelo mecanismo de hash do Django.
-* O perfil de domínio (`users`) deve manter a função do usuário. Os valores permitidos são `ADMIN`, `MEMBER`, `DEVELOPER`, `TEST`, `MANAGER` e `PRODUCT_OWNER`.
+* O perfil de domínio (`users`) deve manter a função do usuário. Os valores permitidos são `ADMIN`, `MEMBER`, `DEVELOPER`, `TEST`, `MANAGER` e `PRODUCT_OWNER`. Essa função determina quais Contratos/Projetos/Tarefas/Requisitos/Atores o usuário pode ver e alterar — ver seção 2.8.
+* A sessão web (usuário Django autenticado) é resolvida para o perfil de domínio correspondente pelo e-mail (`users.email` = `username` do usuário Django); usada para aplicar as regras de visibilidade da seção 2.8.
 * O cadastro de usuário deve exigir nome, e-mail, senha, confirmação de senha e função, criando o usuário Django e o perfil de domínio correspondente.
 * O dashboard e as ações web devem exigir usuário autenticado; endpoints REST permanecem independentes da sessão web.
 * Para inicializar uma base sem usuários, disponibilizar o comando:
@@ -234,8 +239,9 @@ CREATE TABLE actors (
 
 ### 2.6 Requisitos e Vínculo com Tarefas
 
-* Um Requisito é uma entidade independente (`code`, `title`, `description` em Markdown, `type`, `priority`, `status`) que pode ser vinculado a uma ou mais Tarefas, e uma Tarefa pode atender a vários Requisitos (N:N), por meio da tabela `requirement_task_links`.
+* Todo Requisito pertence a exatamente um Projeto (`project_id`, obrigatório, FK para `projects`, `ON DELETE CASCADE`) — ver seção 2.8 para as regras de visibilidade derivadas dessa associação. Além disso, um Requisito (`code`, `title`, `description` em Markdown, `type`, `priority`, `status`) pode ser vinculado a uma ou mais Tarefas, e uma Tarefa pode atender a vários Requisitos (N:N), por meio da tabela `requirement_task_links`.
 * O campo `code` é único em todo o sistema (ex: `RF-01`, `RNF-02`); tentar cadastrar ou editar um requisito para um código já utilizado é rejeitado.
+* O `project_id` é exigido na criação (`POST /web/requirements` ou `POST /api/v1/requirements`) e pode ser alterado na edição; tentar informar um `project_id` inexistente é rejeitado com `404 Not Found`/`ProjectNotFoundError`.
 * `type` aceita `FUNCTIONAL`, `NON_FUNCTIONAL`, `BUSINESS_RULE` ou `TECHNICAL_CONSTRAINT`. `priority` aceita `LOW`, `MEDIUM` ou `HIGH`.
 * `status` é um campo próprio do requisito (não é calculado a partir das tarefas vinculadas, ao contrário do status do Projeto — ver seção 2.3), com transições: `DRAFT -> {APPROVED, DEPRECATED}`, `APPROVED -> {IMPLEMENTED, DRAFT, DEPRECATED}`, `IMPLEMENTED -> {APPROVED, DEPRECATED}`. `DEPRECATED` é um estado final e não pode retornar para outro status.
 * A combinação `requirement_id` + `task_id` é única; vincular uma tarefa já vinculada não cria duplicidade. Ao excluir um requisito ou uma tarefa, os vínculos correspondentes são removidos em cascata.
@@ -245,11 +251,66 @@ CREATE TABLE actors (
 ### 2.7 Atores do Sistema e Vínculo com Requisitos
 
 * Um Ator (`name`, `description` em Markdown) é uma entidade independente do cadastro de Usuários (`users`) — representa um papel/persona de negócio que interage com o sistema (ex.: *Cliente*, *Administrador*, *Atendente*), sem estar necessariamente associado a uma conta de acesso.
+* Todo Ator pertence a exatamente um Contrato (`contract_id`, obrigatório, FK para `contracts`, `ON DELETE CASCADE`) — ver seção 2.8 para as regras de visibilidade derivadas dessa associação. O `contract_id` é exigido na criação (`POST /web/actors`) e pode ser alterado na edição; tentar informar um `contract_id` inexistente é rejeitado com `ContractNotFoundError`.
 * Um Ator pode ser vinculado a um ou mais Requisitos, e um Requisito pode estar vinculado a vários Atores (N:N), por meio da tabela `actor_requirement_links`, no mesmo padrão do vínculo Requisito↔Tarefa (seção 2.6).
 * A combinação `actor_id` + `requirement_id` é única; vincular um ator já vinculado não cria duplicidade. Ao excluir um ator ou um requisito, os vínculos correspondentes são removidos em cascata.
 * Assim como o vínculo com Tarefas (seção 2.6), o vínculo com Atores pode ser feito já no momento do cadastro do requisito, selecionando um ou mais atores no modal de criação (`actor_ids`, seção 3.2), ou posteriormente pela tabela de Requisitos.
 * A gestão do vínculo após a criação (adicionar/remover) é centralizada na tabela de Requisitos do dashboard (`POST /web/requirements/{requirement_id}/actors`, seção 3.2), no mesmo padrão adotado para o vínculo com Tarefas — evitando duas interfaces divergentes para a mesma operação. A tabela de Atores exibe, de forma recíproca e somente leitura, os requisitos vinculados a cada ator.
 * Os atores vinculados a cada requisito também são refletidos na seção 7 (Requisitos Rastreáveis) do `SPECIFICATION.md`, junto com as tarefas vinculadas.
+
+### 2.8 Controle de Acesso e Visibilidade por Perfil
+
+A visibilidade de Contratos, Projetos, Tarefas, Requisitos e Atores no dashboard (e a autorização das
+ações de escrita sobre eles) depende do perfil (`role`) do usuário autenticado. As regras abaixo se
+aplicam à interface web (`/`, `/web/...`); os endpoints REST (`/api/v1/...`) permanecem independentes
+da sessão web (seção 2.5) e não aplicam este filtro.
+
+#### 2.8.1 Regras por perfil
+
+| Perfil | Projetos visíveis | Como navega |
+|---|---|---|
+| `ADMIN` | Todos os projetos do sistema. | Combo box de contrato (opcional) apenas filtra a visão; sem seleção, vê tudo. |
+| `MEMBER` | Todos os projetos do contrato selecionado. | Combo box de contrato **obrigatório**: sem seleção, não vê nenhum projeto. |
+| `DEVELOPER` | Apenas os projetos dos quais é `owner` ou membro da equipe (`project_memberships`). | Não possui combo box de contrato; a visão independe de qualquer contrato. |
+| `TEST` | Idêntico a `DEVELOPER`. | Idêntico a `DEVELOPER`. |
+| `MANAGER` | Idêntico a `DEVELOPER`. | Idêntico a `DEVELOPER`. |
+| `PRODUCT_OWNER` | Idêntico a `DEVELOPER`. | Idêntico a `DEVELOPER`. |
+
+A partir do conjunto de Projetos visíveis, os demais dados são derivados:
+* **Tarefas e Requisitos:** visíveis apenas se pertencerem a um Projeto visível (`task.project_id` /
+  `requirement.project_id` no conjunto visível — seção 2.6).
+* **Atores e a tabela de Contratos:** visíveis apenas se pertencerem a um Contrato visível. Para
+  `ADMIN`/`MEMBER`, o Contrato visível é o selecionado no combo box (ou todos, se `ADMIN` não
+  selecionou nenhum). Para os demais perfis, são os contratos dos seus próprios Projetos visíveis
+  (seção 2.7).
+* O filtro por Projeto já existente (`?project_id=`, seção 3.1) só é aplicado se o projeto informado
+  estiver dentro do conjunto visível; caso contrário, é ignorado silenciosamente e a listagem completa
+  (dentro do que é visível) é exibida — isso evita que um usuário force a visualização de outro
+  projeto manipulando a URL.
+
+#### 2.8.2 Combo box de seleção de contrato (Painel de Gestão de Tarefas)
+
+* Exibido apenas para `ADMIN` e `MEMBER` (`GET /?contract_id={uuid}`), no topo do dashboard.
+* Lista **todos** os contratos do sistema, independentemente do que já está filtrado — é o ponto de
+  entrada para "desbloquear" a visão de um contrato específico.
+* Para `ADMIN`, selecionar um contrato apenas restringe a visão a ele (não é uma restrição de
+  segurança, já que `ADMIN` já enxerga tudo por padrão). Para `MEMBER`, a seleção é o único jeito de
+  ver projetos, atores e tarefas — sem seleção, o dashboard exibe um estado vazio.
+
+#### 2.8.3 Aplicação em ações de escrita (defesa em profundidade)
+
+A filtragem acima cobre a *visualização*; as ações que alteram dados (criar/editar/excluir Tarefa,
+Requisito, Ator e Projeto, e vincular/desvincular Tarefa ou Ator a um Requisito) também validam, no
+servidor, se o usuário tem acesso ao Projeto/Contrato do recurso-alvo — mesmo que o dashboard já
+esconda o botão correspondente, o endpoint recusa a operação (mensagem de erro e redirecionamento,
+sem erro 500) caso o `project_id`/`contract_id` informado (ou o Projeto/Contrato do recurso já
+existente) não seja acessível ao usuário. `ADMIN` sempre tem acesso; `MEMBER` tem acesso amplo (pode
+agir em qualquer contrato, dado que sua limitação é apenas de navegação); os demais perfis só têm
+acesso a Projetos dos quais são `owner` ou membros da equipe, e a Contratos desses mesmos Projetos.
+
+A criação/edição/exclusão de Contratos em si (`/web/contracts...`) **não** é restrita por perfil —
+esta seção trata apenas da visibilidade e autorização em torno de Projetos, Tarefas, Requisitos e
+Atores, conforme solicitado.
 
 ### 2.3 Status de Contratos e Projetos
 
@@ -278,15 +339,16 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Rota:** `/` (ou `/?project_id={uuid}`)
 * **Pré-requisito de inicialização:** Antes de acessar a rota, executar `python manage.py migrate`. A migration inicial `tasktrack.0001_initial` cria as tabelas `users`, `contracts`, `projects` e `tasks` consultadas pelo dashboard.
 * **Recursos visuais:**
-  * **Barra de Métricas:** Contadores em tempo real do total de Projetos, Tarefas Pendentes, Em Andamento e Concluídas.
-  * **Filtro por Projeto:** Navegação rápida para filtrar as tarefas por projeto selecionado.
+  * **Barra de Métricas:** Contadores em tempo real do total de Projetos, Tarefas Pendentes, Em Andamento e Concluídas (já refletindo a visibilidade do perfil — seção 2.8).
+  * **Seletor de Contrato (`GET /?contract_id={uuid}`):** exibido apenas para `ADMIN` e `MEMBER` (seção 2.8.2). Combo box com todos os contratos do sistema; ao selecionar um, o dashboard passa a exibir os projetos, atores e tarefas daquele contrato. Para `MEMBER`, é obrigatório selecionar um contrato para ver qualquer projeto.
+  * **Filtro por Projeto:** Navegação rápida para filtrar as tarefas por projeto selecionado, dentro do conjunto de projetos visível ao usuário (seção 2.8).
   * **Status dos Contratos:** Dividido em 3 colunas de status:
     * `PROSPECTING` (Prospecção): Cartões com título, descrição, proprietário, download do arquivo (quando existir) e botão *"Iniciar"* para transição direta para `IN_PROGRESS`.
     * `IN_PROGRESS` (Em Andamento): Contrato em Assinatura com botões *"Voltar"* (para `PROSPECTING`) e *"Concluir"* (para `SIGNED`).
     * `SIGNED` (Assinados): Contrato Aprovado — estado final, exibido com badge "Assinado" e sem botões de transição.
     * Todos os cartões, independente da coluna/status, exibem botões *"Editar"* (lápis) e *"Excluir"* (lixeira).
   * **Equipes dos Projetos:** Cada projeto deve exibir seus membros e oferecer controles para adicionar ou remover usuários, sem permitir duplicidades. A tabela de projetos também exibe botões *"Editar"* (lápis) e *"Excluir"* (lixeira) por projeto.
-  * **Atores do Sistema (ver seção 2.7):** Tabela dedicada ao gerenciamento de atores (`name`, `description`), independente do cadastro de Usuários. Cada linha exibe nome, descrição, os requisitos vinculados (badges, somente leitura — o vínculo é gerido pela tabela de Requisitos) e botões *"Editar"* (lápis) e *"Excluir"* (lixeira). O botão **"Novo Ator"** na barra de ferramentas abre o modal de cadastro.
+  * **Atores do Sistema (ver seções 2.7 e 2.8):** Tabela dedicada ao gerenciamento de atores (`contract_id`, `name`, `description`), independente do cadastro de Usuários, filtrada aos contratos visíveis ao usuário. Cada linha exibe ID, nome, descrição, os requisitos vinculados (badges, somente leitura — o vínculo é gerido pela tabela de Requisitos) e botões *"Editar"* (lápis) e *"Excluir"* (lixeira). O botão **"Novo Ator"** na barra de ferramentas abre o modal de cadastro, que exige a seleção de um Contrato (dentre os visíveis ao usuário).
   * **Rastreabilidade Ator ↔ Requisito (vínculo N:N, seção 2.7):** a tabela de Requisitos exibe, junto às tarefas vinculadas, os atores vinculados a cada requisito, com controles para vincular/desvincular (`POST /web/requirements/{requirement_id}/actors`, seção 3.2). A tabela de Atores mostra, de forma recíproca e somente leitura, quais requisitos cada ator está vinculado.
   * **Quadro Kanban de Tarefas:** Dividido em 3 colunas de status:
     * `PENDING` (Pendentes): Cartões com badge de prioridade, prazo, botão *"Iniciar"* para transição direta para `IN_PROGRESS`, botão *"Editar"* (lápis) e botão *"Excluir"* (lixeira).
@@ -301,11 +363,19 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * Modal de Cadastro de Tarefa (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown, com seleção de prioridade, projeto, responsável e data de vencimento).
     * Modal de Edição de Tarefa (permite atualizar todos os campos incluindo descrição em Markdown com 400px min-height = ~20 linhas, redimensionável, github_url; pré-preenchido com dados da tarefa selecionada).
     * Modal de Cadastro de Usuários (para membros da equipe).
-    * Modal de Cadastro de Requisito (descrição em Markdown, com seleção múltipla de Tarefas e de Atores a vincular já na criação — ver seções 2.6/2.7).
+    * Modal de Cadastro de Requisito (exige a seleção de um Projeto, dentre os visíveis ao usuário; descrição em Markdown, com seleção múltipla de Tarefas e de Atores a vincular já na criação — ver seções 2.6/2.7/2.8).
     * Modal de Cadastro de Ator (nome e descrição em Markdown).
     * Modal de Edição de Ator (pré-preenchido com dados do ator selecionado).
 
 ### 3.2 Ações e Formulários Web
+
+> **Autorização (seção 2.8):** todas as ações abaixo sobre Projeto, Tarefa, Requisito e Ator (criar,
+> editar, excluir, alterar status, gerenciar equipe/vínculos) validam no servidor se o usuário
+> autenticado tem acesso ao Projeto/Contrato envolvido, mesmo que o botão correspondente já esteja
+> oculto na interface para quem não tem acesso. Quando a validação falha, a resposta é um
+> redirecionamento para `/` com mensagem de erro (`"Você não tem permissão para..."`), nunca um erro
+> 500. As ações sobre Contrato (`/web/contracts...`) não são restritas por perfil.
+
 * **Adicionar Contrato:** `POST /web/contracts` (Campos: `title`, `description`, `contract_file`, `owner_id`). Um contrato não recebe `contract_id`.
 * **Criar Projeto:** `POST /web/projects` (Campos: `contract_id`, `title`, `description`, `owner_id`). O formulário deve exigir a seleção de um contrato existente; não é permitido criar projeto sem contrato.
 * **Baixar Contrato:** `GET /download/<contract_file_path>` (Autenticado).
@@ -361,13 +431,13 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Cadastrar Usuário:** `POST /web/users` (Campos: `name`, `email`, `password`, `password_confirmation`, `role`).
 * **Entrar:** `POST /login` (Campos: `username` com o e-mail e `password`).
 * **Sair:** `GET /logout`.
-* **Cadastrar Requisito:** `POST /web/requirements` (Campos: `code`, `title`, `description`, `type`, `priority`, `task_ids` [opcional, lista de UUIDs de tarefas a vincular] e `actor_ids` [opcional, lista de UUIDs de atores a vincular]). A criação do requisito e os vínculos com tarefas/atores ocorrem em uma única transação: se algum `task_id`/`actor_id` informado não existir, nada é persistido (o requisito não é criado).
+* **Cadastrar Requisito:** `POST /web/requirements` (Campos: `project_id` [obrigatório], `code`, `title`, `description`, `type`, `priority`, `task_ids` [opcional, lista de UUIDs de tarefas a vincular] e `actor_ids` [opcional, lista de UUIDs de atores a vincular]). A criação do requisito e os vínculos com tarefas/atores ocorrem em uma única transação: se algum `task_id`/`actor_id` informado não existir, nada é persistido (o requisito não é criado). Se o usuário não tiver acesso ao `project_id` informado (seção 2.8), a operação é recusada.
 * **Editar Requisito:** `POST /web/requirements/{requirement_id}` (Campos opcionais: `code`, `title`, `description`, `type`, `priority` — atualização parcial, igual à edição de tarefa).
 * **Alterar status do Requisito:** `POST /web/requirements/{requirement_id}/status` (Campo: `status`, conforme transições da seção 2.6).
 * **Vincular/Desvincular Tarefa ao Requisito:** `POST /web/requirements/{requirement_id}/tasks` (Campos: `action` com `add` ou `remove`, e `task_id`).
 * **Vincular/Desvincular Ator ao Requisito:** `POST /web/requirements/{requirement_id}/actors` (Campos: `action` com `add` ou `remove`, e `actor_id`, conforme seção 2.7).
 * **Excluir Requisito:** `POST /web/requirements/{requirement_id}/delete` (Sem campos).
-* **Cadastrar Ator:** `POST /web/actors` (Campos: `name`, `description`).
+* **Cadastrar Ator:** `POST /web/actors` (Campos: `contract_id` [obrigatório], `name`, `description`). Se o usuário não tiver acesso ao `contract_id` informado (seção 2.8), a operação é recusada.
 * **Editar Ator:** `POST /web/actors/{actor_id}` (Campos opcionais: `name`, `description` — atualização parcial, igual à edição de requisito).
 * **Excluir Ator:** `POST /web/actors/{actor_id}/delete` (Sem campos). Os vínculos com Requisitos são removidos em cascata (seção 2.7).
 * **Exportar Requisitos para SPECIFICATION.md:** `POST /web/specification/export` (Sem campos). Regenera apenas o bloco gerado automaticamente da seção 7 (Requisitos Rastreáveis), preservando o restante do documento.
@@ -581,6 +651,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Request Body (criação):**
 ```json
 {
+  "project_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "code": "RF-01",
   "title": "Autenticação de Usuários",
   "description": "O sistema deve permitir login via e-mail e senha.",
@@ -589,9 +660,9 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 }
 ```
 * **Respostas (criação):**
-  * `201 Created`: Retorna o objeto completo do requisito criado.
-  * `400 Bad Request`: Código já utilizado por outro requisito.
-  * `422 Unprocessable Entity`: Dados de entrada inválidos.
+  * `201 Created`: Retorna o objeto completo do requisito criado (inclui `project_id`).
+  * `400 Bad Request`: Código já utilizado por outro requisito, ou `project_id` inexistente.
+  * `422 Unprocessable Entity`: Dados de entrada inválidos (ex.: `project_id` ausente).
 * **Editar / Excluir:** `PUT`/`PATCH /api/v1/requirements/{requirement_id}` (campos opcionais, mesmo padrão da edição de tarefa) e `DELETE /api/v1/requirements/{requirement_id}`.
   * `200 OK` / `204 No Content` em caso de sucesso; `404 Not Found` se o requisito não existir.
 * **Alterar Status:** `PATCH /api/v1/requirements/{requirement_id}/status` com `{"status": "APPROVED"}` (transições conforme seção 2.6).

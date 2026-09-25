@@ -10,6 +10,18 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">Contrato *</label>
+                        <select name="contract_id" class="form-select" required {% if not contracts %}disabled{% endif %}>
+                            <option value="">Selecione o contrato...</option>
+                            {% for c in contracts %}
+                                <option value="{{ c.id }}">{{ c.display_id }} — {{ c.title }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if not contracts %}
+                            <div class="form-text text-danger">Nenhum contrato visível. Selecione um contrato no topo do painel primeiro.</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Nome (2 a 100 caracteres) *</label>
                         <input type="text" name="name" class="form-control" placeholder="ex: Cliente, Administrador, Atendente" required minlength="2" maxlength="100">
                     </div>

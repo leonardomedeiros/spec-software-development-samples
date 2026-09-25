@@ -320,16 +320,20 @@ class DeleteTaskUseCase:
 
 
 class CreateRequirementUseCase:
-    def __init__(self, requirement_repo: IRequirementRepository):
+    def __init__(self, requirement_repo: IRequirementRepository, project_repo: IProjectRepository):
         self.requirement_repo = requirement_repo
+        self.project_repo = project_repo
 
     def execute(self, dto: CreateRequirementSchema) -> Requirement:
+        if not self.project_repo.get_by_id(dto.project_id):
+            raise ProjectNotFoundError("Projeto não encontrado")
         if any(r.code == dto.code for r in self.requirement_repo.list_all()):
             raise RequirementCodeAlreadyExistsError(f"Já existe um requisito com o código '{dto.code}'.")
 
         requirement = Requirement(
             id=uuid4(),
             display_id=self.requirement_repo.next_display_id(),
+            project_id=dto.project_id,
             code=dto.code,
             title=dto.title,
             description=dto.description or "",
@@ -341,14 +345,19 @@ class CreateRequirementUseCase:
 
 
 class UpdateRequirementUseCase:
-    def __init__(self, requirement_repo: IRequirementRepository):
+    def __init__(self, requirement_repo: IRequirementRepository, project_repo: IProjectRepository):
         self.requirement_repo = requirement_repo
+        self.project_repo = project_repo
 
     def execute(self, requirement_id: UUID, dto: UpdateRequirementSchema) -> Requirement:
         requirement = self.requirement_repo.get_by_id(requirement_id)
         if not requirement:
             raise RequirementNotFoundError()
 
+        if dto.project_id is not None:
+            if not self.project_repo.get_by_id(dto.project_id):
+                raise ProjectNotFoundError("Projeto não encontrado")
+            requirement.project_id = dto.project_id
         if dto.code is not None and dto.code != requirement.code:
             if any(r.code == dto.code for r in self.requirement_repo.list_all()):
                 raise RequirementCodeAlreadyExistsError(f"Já existe um requisito com o código '{dto.code}'.")
@@ -412,13 +421,18 @@ class UnlinkRequirementFromTaskUseCase:
 
 
 class CreateActorUseCase:
-    def __init__(self, actor_repo: IActorRepository):
+    def __init__(self, actor_repo: IActorRepository, contract_repo: IContractRepository):
         self.actor_repo = actor_repo
+        self.contract_repo = contract_repo
 
     def execute(self, dto: CreateActorSchema) -> Actor:
+        if not self.contract_repo.get_by_id(dto.contract_id):
+            raise ContractNotFoundError("Contrato não encontrado")
+
         actor = Actor(
             id=uuid4(),
             display_id=self.actor_repo.next_display_id(),
+            contract_id=dto.contract_id,
             name=dto.name,
             description=dto.description or "",
             created_at=datetime.now(timezone.utc),
@@ -427,14 +441,19 @@ class CreateActorUseCase:
 
 
 class UpdateActorUseCase:
-    def __init__(self, actor_repo: IActorRepository):
+    def __init__(self, actor_repo: IActorRepository, contract_repo: IContractRepository):
         self.actor_repo = actor_repo
+        self.contract_repo = contract_repo
 
     def execute(self, actor_id: UUID, dto: UpdateActorSchema) -> Actor:
         actor = self.actor_repo.get_by_id(actor_id)
         if not actor:
             raise ActorNotFoundError()
 
+        if dto.contract_id is not None:
+            if not self.contract_repo.get_by_id(dto.contract_id):
+                raise ContractNotFoundError("Contrato não encontrado")
+            actor.contract_id = dto.contract_id
         if dto.name is not None:
             actor.name = dto.name
         if dto.description is not None:

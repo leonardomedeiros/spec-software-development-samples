@@ -186,6 +186,7 @@ class TaskResponseSchema(BaseModel):
 
 
 class CreateRequirementSchema(BaseModel):
+    project_id: UUID
     code: str = Field(..., min_length=2, max_length=20)
     title: str = Field(..., min_length=3, max_length=150)
     description: Optional[str] = None
@@ -209,6 +210,7 @@ class CreateRequirementSchema(BaseModel):
 
 
 class UpdateRequirementSchema(BaseModel):
+    project_id: Optional[UUID] = None
     code: Optional[str] = Field(None, min_length=2, max_length=20)
     title: Optional[str] = Field(None, min_length=3, max_length=150)
     description: Optional[str] = None
@@ -241,6 +243,7 @@ class UpdateRequirementStatusSchema(BaseModel):
 
 class RequirementResponseSchema(BaseModel):
     id: UUID
+    project_id: UUID
     code: str
     title: str
     description: Optional[str] = None
@@ -251,6 +254,7 @@ class RequirementResponseSchema(BaseModel):
 
 
 class CreateActorSchema(BaseModel):
+    contract_id: UUID
     name: str = Field(..., min_length=2, max_length=100)
     description: Optional[str] = None
 
@@ -264,6 +268,7 @@ class CreateActorSchema(BaseModel):
 
 
 class UpdateActorSchema(BaseModel):
+    contract_id: Optional[UUID] = None
     name: Optional[str] = Field(None, min_length=2, max_length=100)
     description: Optional[str] = None
 
@@ -280,6 +285,7 @@ class UpdateActorSchema(BaseModel):
 
 class ActorResponseSchema(BaseModel):
     id: UUID
+    contract_id: UUID
     name: str
     description: Optional[str] = None
     created_at: datetime

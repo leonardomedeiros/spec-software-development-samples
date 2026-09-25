@@ -10,6 +10,18 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
+                        <label class="form-label fw-semibold">Projeto *</label>
+                        <select name="project_id" class="form-select" required {% if not projects %}disabled{% endif %}>
+                            <option value="">Selecione o projeto...</option>
+                            {% for project in projects %}
+                                <option value="{{ project.id }}">{{ project.display_id }} — {{ project.title }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if not projects %}
+                            <div class="form-text text-danger">Nenhum projeto visível. Selecione um contrato ou cadastre um projeto primeiro.</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Código (único) *</label>
                         <input type="text" name="code" class="form-control" placeholder="ex: RF-01" required minlength="2" maxlength="20">
                     </div>

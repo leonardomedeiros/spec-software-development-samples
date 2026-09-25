@@ -95,6 +95,7 @@ class Task:
 class Requirement:
     id: UUID = field(default_factory=uuid4)
     display_id: Optional[str] = None
+    project_id: Optional[UUID] = None
     code: str = ""
     title: str = ""
     description: str = ""
@@ -125,6 +126,7 @@ class Requirement:
 class Actor:
     id: UUID = field(default_factory=uuid4)
     display_id: Optional[str] = None
+    contract_id: Optional[UUID] = None
     name: str = ""
     description: str = ""
     created_at: Optional[datetime] = None

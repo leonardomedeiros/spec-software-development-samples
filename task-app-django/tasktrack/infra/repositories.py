@@ -58,6 +58,19 @@ class DjangoUserRepository(IUserRepository):
         except UserModel.DoesNotExist:
             return None
 
+    def get_by_email(self, email: str) -> Optional[User]:
+        try:
+            orm_user = UserModel.objects.get(email__iexact=email)
+            return User(
+                id=orm_user.id,
+                name=orm_user.name,
+                email=orm_user.email,
+                role=UserRole(orm_user.role),
+                created_at=orm_user.created_at,
+            )
+        except UserModel.DoesNotExist:
+            return None
+
     def list_all(self) -> list[User]:
         return [
             User(
@@ -298,6 +311,7 @@ class DjangoRequirementRepository(IRequirementRepository):
             return Requirement(
                 id=orm_req.id,
                 display_id=orm_req.display_id,
+                project_id=orm_req.project_id,
                 code=orm_req.code,
                 title=orm_req.title,
                 description=orm_req.description,
@@ -314,6 +328,7 @@ class DjangoRequirementRepository(IRequirementRepository):
             Requirement(
                 id=r.id,
                 display_id=r.display_id,
+                project_id=r.project_id,
                 code=r.code,
                 title=r.title,
                 description=r.description,
@@ -330,6 +345,7 @@ class DjangoRequirementRepository(IRequirementRepository):
             id=requirement.id,
             defaults={
                 "display_id": requirement.display_id,
+                "project_id": requirement.project_id,
                 "code": requirement.code,
                 "title": requirement.title,
                 "description": requirement.description,
@@ -377,6 +393,7 @@ class DjangoRequirementRepository(IRequirementRepository):
             Actor(
                 id=link.actor.id,
                 display_id=link.actor.display_id,
+                contract_id=link.actor.contract_id,
                 name=link.actor.name,
                 description=link.actor.description,
                 created_at=link.actor.created_at,
@@ -399,6 +416,7 @@ class DjangoActorRepository(IActorRepository):
             return Actor(
                 id=orm_actor.id,
                 display_id=orm_actor.display_id,
+                contract_id=orm_actor.contract_id,
                 name=orm_actor.name,
                 description=orm_actor.description,
                 created_at=orm_actor.created_at,
@@ -411,6 +429,7 @@ class DjangoActorRepository(IActorRepository):
             Actor(
                 id=a.id,
                 display_id=a.display_id,
+                contract_id=a.contract_id,
                 name=a.name,
                 description=a.description,
                 created_at=a.created_at,
@@ -423,6 +442,7 @@ class DjangoActorRepository(IActorRepository):
             id=actor.id,
             defaults={
                 "display_id": actor.display_id,
+                "contract_id": actor.contract_id,
                 "name": actor.name,
                 "description": actor.description,
             },
@@ -441,6 +461,7 @@ class DjangoActorRepository(IActorRepository):
             Requirement(
                 id=link.requirement.id,
                 display_id=link.requirement.display_id,
+                project_id=link.requirement.project_id,
                 code=link.requirement.code,
                 title=link.requirement.title,
                 description=link.requirement.description,

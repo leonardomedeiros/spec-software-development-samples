@@ -16,6 +16,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from pydantic import ValidationError
 
+from ..domain import visibility
 from ..domain.entities import User
 from ..domain.enums import (
     ContractStatus,
@@ -118,6 +119,47 @@ def _format_pydantic_error(e: ValidationError) -> JsonResponse:
     return JsonResponse({"detail": details}, status=422)
 
 
+def _get_current_domain_user(request) -> Optional[User]:
+    """Resolve o perfil de domínio (com role) correspondente ao usuário Django autenticado."""
+    if not request.user.is_authenticated:
+        return None
+    return user_repo.get_by_email(request.user.username)
+
+
+def _user_can_access_project(request, project_id: UUID) -> bool:
+    """Guarda de autorização para ações (editar/excluir/vincular) sobre um projeto específico."""
+    current_user = _get_current_domain_user(request)
+    if current_user is None:
+        return False
+    if current_user.role == UserRole.ADMIN:
+        return True
+    project = project_repo.get_by_id(project_id)
+    if project is None:
+        return False
+    if current_user.role == UserRole.MEMBER:
+        # MEMBER pode navegar/agir em projetos de qualquer contrato (seleção explícita no dashboard).
+        return True
+    if project.owner_id == current_user.id:
+        return True
+    return any(member.id == current_user.id for member in project_repo.list_team_members(project_id))
+
+
+def _user_can_access_contract(request, contract_id: UUID) -> bool:
+    """Guarda de autorização para ações sobre um contrato ou entidade vinculada a ele (ex.: Ator)."""
+    current_user = _get_current_domain_user(request)
+    if current_user is None:
+        return False
+    if current_user.role in (UserRole.ADMIN, UserRole.MEMBER):
+        return True
+    contract_projects = [p for p in project_repo.list_all() if p.contract_id == contract_id]
+    for project in contract_projects:
+        if project.owner_id == current_user.id:
+            return True
+        if any(member.id == current_user.id for member in project_repo.list_team_members(project.id)):
+            return True
+    return False
+
+
 def _save_contract_file(uploaded_file) -> Optional[str]:
     """Persiste o arquivo anexado em MEDIA_ROOT e retorna o caminho relativo."""
     if not uploaded_file:
@@ -136,26 +178,75 @@ def _save_contract_file(uploaded_file) -> Optional[str]:
 
 @login_required(login_url="/login")
 def home_view(request):
-    """Página inicial com Dashboard de Projetos e Kanban de Tarefas."""
-    selected_project_id = request.GET.get("project_id")
-    projects = project_repo.list_all()
-    users = user_repo.list_all()
+    """Página inicial com Dashboard de Projetos e Kanban de Tarefas, filtrada pela visibilidade do usuário."""
+    current_user = _get_current_domain_user(request)
+    if current_user is None:
+        messages.error(request, "Não foi possível identificar seu perfil de acesso. Contate um administrador.")
+        return render(request, "index.html", {
+            "projects": [], "users": [], "contracts": [], "prospecting_contracts": [],
+            "in_progress_contracts": [], "signed_contracts": [], "selected_project_id": None,
+            "MEDIA_URL": settings.MEDIA_URL, "pending_tasks": [], "in_progress_tasks": [],
+            "completed_tasks": [], "requirements": [], "all_tasks": [], "actors": [],
+            "can_browse_contracts": False, "all_contracts": [], "selected_contract_id": None,
+        })
 
+    selected_project_id = request.GET.get("project_id")
+    selected_contract_id_str = request.GET.get("contract_id")
+    selected_contract_id = None
+    if selected_contract_id_str:
+        try:
+            selected_contract_id = UUID(selected_contract_id_str)
+        except ValueError:
+            selected_contract_id = None
+
+    users = user_repo.list_all()
     user_map = {u.id: u.name for u in users}
 
+    # Carrega todos os projetos com equipe anexada — necessário tanto para exibição
+    # quanto para calcular a visibilidade de perfis baseados em posse/associação.
+    all_projects = project_repo.list_all()
+    for project in all_projects:
+        project.team_members = project_repo.list_team_members(project.id)
+        project.team_member_ids = {member.id for member in project.team_members}
+    member_user_ids_by_project = {p.id: p.team_member_ids for p in all_projects}
+
+    visible_project_ids = visibility.get_visible_project_ids(
+        current_user, all_projects, member_user_ids_by_project, selected_contract_id
+    )
+    visible_contract_ids = visibility.get_visible_contract_ids(
+        current_user, all_projects, visible_project_ids, selected_contract_id
+    )
+    can_browse_contracts = visibility.can_browse_contracts(current_user)
+
+    projects = [p for p in all_projects if visibility.is_id_visible(p.id, visible_project_ids)]
+    visible_project_id_set = {p.id for p in projects}
+
+    # A tarefa/projeto selecionado via querystring só é aplicado se estiver dentro do
+    # conjunto visível — evita que um usuário force a visualização de outro projeto pela URL.
+    all_tasks_unfiltered = task_repo.list_all()
+    all_tasks = [t for t in all_tasks_unfiltered if t.project_id in visible_project_id_set]
+
+    selected_project_uuid = None
     if selected_project_id:
         try:
-            tasks = task_repo.list_by_project(UUID(selected_project_id))
+            candidate = UUID(selected_project_id)
+            if candidate in visible_project_id_set:
+                selected_project_uuid = candidate
         except ValueError:
-            tasks = task_repo.list_all()
+            pass
+
+    if selected_project_uuid:
+        tasks = [t for t in all_tasks if t.project_id == selected_project_uuid]
     else:
-        tasks = task_repo.list_all()
+        selected_project_id = None
+        tasks = all_tasks
 
     # Anexa o nome do responsável se existir
     for t in tasks:
         t.assignee_name = user_map.get(t.assignee_id, "") if t.assignee_id else ""
 
-    contracts = contract_repo.list_all()
+    all_contracts = contract_repo.list_all()
+    contracts = [c for c in all_contracts if visibility.is_id_visible(c.id, visible_contract_ids)]
     for c in contracts:
         c.owner_name = user_map.get(c.owner_id, "") if c.owner_id else ""
 
@@ -177,16 +268,17 @@ def home_view(request):
             project.dashboard_status = TaskStatus.PENDING
         else:
             project.dashboard_status = None
-        project.team_members = project_repo.list_team_members(project.id)
-        project.team_member_ids = {member.id for member in project.team_members}
 
     pending_tasks = [t for t in tasks if t.status == TaskStatus.PENDING]
     in_progress_tasks = [t for t in tasks if t.status == TaskStatus.IN_PROGRESS]
     completed_tasks = [t for t in tasks if t.status == TaskStatus.COMPLETED]
 
-    all_tasks = task_repo.list_all()
-    actors = actor_repo.list_all()
-    requirements = requirement_repo.list_all()
+    all_actors = actor_repo.list_all()
+    actors = [a for a in all_actors if visibility.is_id_visible(a.contract_id, visible_contract_ids)]
+
+    all_requirements = requirement_repo.list_all()
+    requirements = [r for r in all_requirements if r.project_id in visible_project_id_set]
+
     task_requirement_codes = {}
     actor_requirement_names = {}
     for requirement in requirements:
@@ -223,6 +315,10 @@ def home_view(request):
         "requirements": requirements,
         "all_tasks": all_tasks,
         "actors": actors,
+        "can_browse_contracts": can_browse_contracts,
+        "all_contracts": all_contracts,
+        "selected_contract_id": str(selected_contract_id) if selected_contract_id else "",
+        "current_user_role": current_user.role.value,
     }
     return render(request, "index.html", context)
 
@@ -271,11 +367,16 @@ def web_create_project_view(request):
         contract_id_str = request.POST.get("contract_id", "")
 
         try:
+            contract_uuid = UUID(contract_id_str)
+            if not _user_can_access_contract(request, contract_uuid):
+                messages.error(request, "Você não tem permissão para criar projetos neste contrato.")
+                return redirect("/")
+
             dto = CreateProjectSchema(
                 title=title,
                 description=description,
                 owner_id=UUID(owner_id_str),
-                contract_id=UUID(contract_id_str),
+                contract_id=contract_uuid,
             )
             use_case = CreateProjectUseCase(project_repo=project_repo, user_repo=user_repo, contract_repo=contract_repo)
             use_case.execute(dto)
@@ -358,6 +459,9 @@ def web_delete_contract_view(request, contract_id: str):
 @login_required(login_url="/login")
 def web_update_project_status_view(request, project_id: str):
     if request.method == "POST":
+        if not _user_can_access_project(request, UUID(project_id)):
+            messages.error(request, "Você não tem permissão para modificar este projeto.")
+            return redirect("/")
         try:
             dto = UpdateProjectStatusSchema(status=ProjectStatus(request.POST.get("status", "")))
             UpdateProjectStatusUseCase(project_repo, task_repo).execute(UUID(project_id), dto)
@@ -372,6 +476,9 @@ def web_update_project_status_view(request, project_id: str):
 @login_required(login_url="/login")
 def web_update_project_team_view(request, project_id: str):
     if request.method == "POST":
+        if not _user_can_access_project(request, UUID(project_id)):
+            messages.error(request, "Você não tem permissão para modificar este projeto.")
+            return redirect("/")
         try:
             user_id = UUID(request.POST.get("user_id", ""))
             if request.POST.get("action") == "remove":
@@ -394,6 +501,10 @@ def web_update_project_view(request, project_id: str):
             project_uuid = UUID(project_id)
         except ValueError:
             messages.error(request, "ID do projeto inválido.")
+            return redirect("/")
+
+        if not _user_can_access_project(request, project_uuid):
+            messages.error(request, "Você não tem permissão para modificar este projeto.")
             return redirect("/")
 
         title = request.POST.get("title", "").strip()
@@ -426,6 +537,9 @@ def web_update_project_view(request, project_id: str):
 @login_required(login_url="/login")
 def web_delete_project_view(request, project_id: str):
     if request.method == "POST":
+        if not _user_can_access_project(request, UUID(project_id)):
+            messages.error(request, "Você não tem permissão para excluir este projeto.")
+            return redirect("/")
         try:
             DeleteProjectUseCase(project_repo=project_repo).execute(UUID(project_id))
             messages.success(request, "Projeto excluído com sucesso!")
@@ -448,6 +562,10 @@ def web_create_task_view(request):
         due_date_str = request.POST.get("due_date", "")
 
         try:
+            if not _user_can_access_project(request, UUID(project_id_str)):
+                messages.error(request, "Você não tem permissão para cadastrar tarefas neste projeto.")
+                return redirect("/")
+
             from datetime import date
             due_date = None
             if due_date_str:
@@ -481,6 +599,10 @@ def web_create_task_view(request):
 @login_required(login_url="/login")
 def web_update_task_status_view(request, task_id: str):
     if request.method == "POST":
+        existing_task = task_repo.get_by_id(UUID(task_id))
+        if existing_task and not _user_can_access_project(request, existing_task.project_id):
+            messages.error(request, "Você não tem permissão para modificar esta tarefa.")
+            return redirect("/")
         status_str = request.POST.get("status", "")
         try:
             dto = UpdateTaskStatusSchema(status=TaskStatus(status_str))
@@ -511,6 +633,10 @@ def web_update_task_view(request, task_id: str):
             task = task_repo.get_by_id(task_uuid)
             if not task:
                 messages.error(request, "Tarefa não encontrada.")
+                return redirect("/")
+
+            if not _user_can_access_project(request, task.project_id):
+                messages.error(request, "Você não tem permissão para modificar esta tarefa.")
                 return redirect("/")
 
             # Extract form data
@@ -570,6 +696,10 @@ def web_update_task_view(request, task_id: str):
 @login_required(login_url="/login")
 def web_delete_task_view(request, task_id: str):
     if request.method == "POST":
+        existing_task = task_repo.get_by_id(UUID(task_id))
+        if existing_task and not _user_can_access_project(request, existing_task.project_id):
+            messages.error(request, "Você não tem permissão para excluir esta tarefa.")
+            return redirect("/")
         try:
             use_case = DeleteTaskUseCase(task_repo=task_repo)
             use_case.execute(UUID(task_id))
@@ -590,11 +720,18 @@ def web_create_requirement_view(request):
         description = request.POST.get("description", "")
         req_type = request.POST.get("type", "")
         priority = request.POST.get("priority", "MEDIUM")
+        project_id_str = request.POST.get("project_id", "")
         task_ids = [t for t in request.POST.getlist("task_ids") if t]
         actor_ids = [a for a in request.POST.getlist("actor_ids") if a]
 
         try:
+            project_id = UUID(project_id_str)
+            if not _user_can_access_project(request, project_id):
+                messages.error(request, "Você não tem permissão para cadastrar requisitos neste projeto.")
+                return redirect("/")
+
             dto = CreateRequirementSchema(
+                project_id=project_id,
                 code=code,
                 title=title,
                 description=description,
@@ -602,7 +739,7 @@ def web_create_requirement_view(request):
                 priority=RequirementPriority(priority),
             )
             with transaction.atomic():
-                requirement = CreateRequirementUseCase(requirement_repo).execute(dto)
+                requirement = CreateRequirementUseCase(requirement_repo, project_repo).execute(dto)
                 for task_id in task_ids:
                     LinkRequirementToTaskUseCase(requirement_repo, task_repo).execute(
                         requirement.id, UUID(task_id)
@@ -616,16 +753,27 @@ def web_create_requirement_view(request):
             msg = e.errors()[0].get("msg", "Dados do requisito inválidos.")
             messages.error(request, f"Erro ao criar requisito: {msg}")
         except ValueError:
-            messages.error(request, "Tipo, prioridade, tarefa ou ator inválidos.")
+            messages.error(request, "Projeto, tipo, prioridade, tarefa ou ator inválidos.")
         except DomainError as e:
             messages.error(request, f"Erro de domínio: {e}")
 
     return redirect("/")
 
 
+def _guard_requirement_access(request, requirement_id: str) -> bool:
+    """True se o requisito não existir (deixa o use case reportar) ou se o usuário puder acessá-lo."""
+    existing = requirement_repo.get_by_id(UUID(requirement_id))
+    if existing is None:
+        return True
+    return _user_can_access_project(request, existing.project_id)
+
+
 @login_required(login_url="/login")
 def web_update_requirement_view(request, requirement_id: str):
     if request.method == "POST":
+        if not _guard_requirement_access(request, requirement_id):
+            messages.error(request, "Você não tem permissão para modificar este requisito.")
+            return redirect("/")
         try:
             code = request.POST.get("code", "").strip()
             title = request.POST.get("title", "").strip()
@@ -640,7 +788,7 @@ def web_update_requirement_view(request, requirement_id: str):
                 type=RequirementType(type_str) if type_str else None,
                 priority=RequirementPriority(priority_str) if priority_str else None,
             )
-            UpdateRequirementUseCase(requirement_repo).execute(UUID(requirement_id), dto)
+            UpdateRequirementUseCase(requirement_repo, project_repo).execute(UUID(requirement_id), dto)
             messages.success(request, "Requisito atualizado com sucesso!")
         except ValidationError as e:
             msg = e.errors()[0].get("msg", "Dados inválidos.")
@@ -656,6 +804,9 @@ def web_update_requirement_view(request, requirement_id: str):
 @login_required(login_url="/login")
 def web_update_requirement_status_view(request, requirement_id: str):
     if request.method == "POST":
+        if not _guard_requirement_access(request, requirement_id):
+            messages.error(request, "Você não tem permissão para modificar este requisito.")
+            return redirect("/")
         status_str = request.POST.get("status", "")
         try:
             dto = UpdateRequirementStatusSchema(status=RequirementStatus(status_str))
@@ -674,6 +825,9 @@ def web_update_requirement_status_view(request, requirement_id: str):
 @login_required(login_url="/login")
 def web_delete_requirement_view(request, requirement_id: str):
     if request.method == "POST":
+        if not _guard_requirement_access(request, requirement_id):
+            messages.error(request, "Você não tem permissão para excluir este requisito.")
+            return redirect("/")
         try:
             DeleteRequirementUseCase(requirement_repo).execute(UUID(requirement_id))
             messages.success(request, "Requisito excluído com sucesso!")
@@ -686,6 +840,9 @@ def web_delete_requirement_view(request, requirement_id: str):
 @login_required(login_url="/login")
 def web_update_requirement_tasks_view(request, requirement_id: str):
     if request.method == "POST":
+        if not _guard_requirement_access(request, requirement_id):
+            messages.error(request, "Você não tem permissão para modificar este requisito.")
+            return redirect("/")
         try:
             task_id = UUID(request.POST.get("task_id", ""))
             if request.POST.get("action") == "remove":
@@ -705,6 +862,9 @@ def web_update_requirement_tasks_view(request, requirement_id: str):
 @login_required(login_url="/login")
 def web_update_requirement_actors_view(request, requirement_id: str):
     if request.method == "POST":
+        if not _guard_requirement_access(request, requirement_id):
+            messages.error(request, "Você não tem permissão para modificar este requisito.")
+            return redirect("/")
         try:
             actor_id = UUID(request.POST.get("actor_id", ""))
             if request.POST.get("action") == "remove":
@@ -721,19 +881,35 @@ def web_update_requirement_actors_view(request, requirement_id: str):
     return redirect("/")
 
 
+def _guard_actor_access(request, actor_id: str) -> bool:
+    """True se o ator não existir (deixa o use case reportar) ou se o usuário puder acessá-lo."""
+    existing = actor_repo.get_by_id(UUID(actor_id))
+    if existing is None:
+        return True
+    return _user_can_access_contract(request, existing.contract_id)
+
+
 @login_required(login_url="/login")
 def web_create_actor_view(request):
     if request.method == "POST":
         name = request.POST.get("name", "")
         description = request.POST.get("description", "")
+        contract_id_str = request.POST.get("contract_id", "")
 
         try:
-            dto = CreateActorSchema(name=name, description=description)
-            CreateActorUseCase(actor_repo).execute(dto)
+            contract_id = UUID(contract_id_str)
+            if not _user_can_access_contract(request, contract_id):
+                messages.error(request, "Você não tem permissão para cadastrar atores neste contrato.")
+                return redirect("/")
+
+            dto = CreateActorSchema(contract_id=contract_id, name=name, description=description)
+            CreateActorUseCase(actor_repo, contract_repo).execute(dto)
             messages.success(request, f"Ator '{dto.name}' cadastrado com sucesso!")
         except ValidationError as e:
             msg = e.errors()[0].get("msg", "Dados do ator inválidos.")
             messages.error(request, f"Erro ao criar ator: {msg}")
+        except ValueError:
+            messages.error(request, "Contrato inválido.")
         except DomainError as e:
             messages.error(request, f"Erro de domínio: {e}")
 
@@ -743,6 +919,9 @@ def web_create_actor_view(request):
 @login_required(login_url="/login")
 def web_update_actor_view(request, actor_id: str):
     if request.method == "POST":
+        if not _guard_actor_access(request, actor_id):
+            messages.error(request, "Você não tem permissão para modificar este ator.")
+            return redirect("/")
         try:
             name = request.POST.get("name", "").strip()
             description = request.POST.get("description", "").strip()
@@ -751,7 +930,7 @@ def web_update_actor_view(request, actor_id: str):
                 name=name if name else None,
                 description=description if description else None,
             )
-            UpdateActorUseCase(actor_repo).execute(UUID(actor_id), dto)
+            UpdateActorUseCase(actor_repo, contract_repo).execute(UUID(actor_id), dto)
             messages.success(request, "Ator atualizado com sucesso!")
         except ValidationError as e:
             msg = e.errors()[0].get("msg", "Dados inválidos.")
@@ -767,6 +946,9 @@ def web_update_actor_view(request, actor_id: str):
 @login_required(login_url="/login")
 def web_delete_actor_view(request, actor_id: str):
     if request.method == "POST":
+        if not _guard_actor_access(request, actor_id):
+            messages.error(request, "Você não tem permissão para excluir este ator.")
+            return redirect("/")
         try:
             DeleteActorUseCase(actor_repo).execute(UUID(actor_id))
             messages.success(request, "Ator excluído com sucesso!")
@@ -1201,6 +1383,7 @@ def task_view(request, task_id: str):
 def _requirement_response(requirement) -> RequirementResponseSchema:
     return RequirementResponseSchema(
         id=requirement.id,
+        project_id=requirement.project_id,
         code=requirement.code,
         title=requirement.title,
         description=requirement.description,
@@ -1232,7 +1415,7 @@ def requirements_view(request):
         except ValidationError as e:
             return _format_pydantic_error(e)
 
-        use_case = CreateRequirementUseCase(requirement_repo)
+        use_case = CreateRequirementUseCase(requirement_repo, project_repo)
         try:
             requirement = use_case.execute(dto)
             return JsonResponse(_requirement_response(requirement).model_dump(mode="json"), status=201)
@@ -1260,7 +1443,7 @@ def requirement_view(request, requirement_id: str):
         except ValidationError as e:
             return _format_pydantic_error(e)
 
-        use_case = UpdateRequirementUseCase(requirement_repo)
+        use_case = UpdateRequirementUseCase(requirement_repo, project_repo)
         try:
             requirement = use_case.execute(req_uuid, dto)
             return JsonResponse(_requirement_response(requirement).model_dump(mode="json"), status=200)

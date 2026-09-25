@@ -1,0 +1,24 @@
+<!-- Filter by Contract (visível apenas para ADMIN e MEMBER — ver seção 2.8 do SPECIFICATION.md) -->
+{% if can_browse_contracts %}
+<div class="card shadow-sm border-0 mb-4 border-start border-4 border-primary">
+    <div class="card-body py-2">
+        <form method="GET" action="/" class="d-flex align-items-center gap-3 flex-wrap">
+            <span class="fw-semibold text-muted"><i class="bi bi-building me-1"></i> Selecionar Contrato:</span>
+            <select name="contract_id" class="form-select form-select-sm" style="max-width: 320px;" onchange="this.form.submit()">
+                <option value="">{% if current_user_role == 'MEMBER' %}Nenhum contrato selecionado{% else %}Todos os contratos{% endif %}</option>
+                {% for c in all_contracts %}
+                    <option value="{{ c.id }}" {% if selected_contract_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.display_id }} — {{ c.title }}</option>
+                {% endfor %}
+            </select>
+            <noscript><button type="submit" class="btn btn-sm btn-outline-primary">Aplicar</button></noscript>
+            {% if not selected_contract_id %}
+                {% if current_user_role == 'MEMBER' %}
+                    <span class="text-muted small">Selecione um contrato para ver seus projetos, atores e tarefas.</span>
+                {% else %}
+                    <span class="text-muted small">Nenhum filtro aplicado — exibindo todos os contratos.</span>
+                {% endif %}
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endif %}
