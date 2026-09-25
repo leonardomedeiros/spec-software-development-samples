@@ -1,6 +1,6 @@
 <!-- MODAL: NOVO REQUISITO -->
 <div class="modal fade" id="modalRequirement" tabindex="-1" aria-labelledby="modalRequirementLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <form method="POST" action="/web/requirements">
             {% csrf_token %}
             <div class="modal-content">
@@ -52,21 +52,31 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Tarefas Vinculadas</label>
-                            <select name="task_ids" class="form-select" multiple size="5">
+                            <div class="border rounded p-2" style="max-height: 220px; overflow-y: auto;">
                                 {% for task in all_tasks %}
-                                    <option value="{{ task.id }}">{{ task.title }}</option>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="task_ids" value="{{ task.id }}" id="newReqTask{{ forloop.counter }}">
+                                        <label class="form-check-label" for="newReqTask{{ forloop.counter }}">{{ task.title }}</label>
+                                    </div>
+                                {% empty %}
+                                    <div class="text-muted small">Nenhuma tarefa disponível.</div>
                                 {% endfor %}
-                            </select>
-                            <div class="form-text">Segure Ctrl/Cmd para selecionar mais de uma tarefa.</div>
+                            </div>
+                            <div class="form-text">Marque quantas tarefas quiser vincular.</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Atores Vinculados</label>
-                            <select name="actor_ids" class="form-select" multiple size="5">
+                            <div class="border rounded p-2" style="max-height: 220px; overflow-y: auto;">
                                 {% for actor in actors %}
-                                    <option value="{{ actor.id }}">{{ actor.name }}</option>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="actor_ids" value="{{ actor.id }}" id="newReqActor{{ forloop.counter }}">
+                                        <label class="form-check-label" for="newReqActor{{ forloop.counter }}">{{ actor.name }}</label>
+                                    </div>
+                                {% empty %}
+                                    <div class="text-muted small">Nenhum ator disponível.</div>
                                 {% endfor %}
-                            </select>
-                            <div class="form-text">Segure Ctrl/Cmd para selecionar mais de um ator.</div>
+                            </div>
+                            <div class="form-text">Marque quantos atores quiser vincular.</div>
                         </div>
                     </div>
                 </div>

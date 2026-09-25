@@ -363,7 +363,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * Modal de Cadastro de Tarefa (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown, com seleção de prioridade, projeto, responsável e data de vencimento).
     * Modal de Edição de Tarefa (permite atualizar todos os campos incluindo descrição em Markdown com 400px min-height = ~20 linhas, redimensionável, github_url; pré-preenchido com dados da tarefa selecionada).
     * Modal de Cadastro de Usuários (para membros da equipe).
-    * Modal de Cadastro de Requisito (exige a seleção de um Projeto, dentre os visíveis ao usuário; descrição em Markdown, com seleção múltipla de Tarefas e de Atores a vincular já na criação — ver seções 2.6/2.7/2.8; o campo `code` não é solicitado, é gerado automaticamente a partir do `type` escolhido).
+    * Modal de Cadastro de Requisito (`modal-lg`, mais larga que os demais modais para acomodar as duas listas de vínculo lado a lado; exige a seleção de um Projeto, dentre os visíveis ao usuário; descrição em Markdown, com seleção múltipla de Tarefas e de Atores a vincular já na criação, via checkboxes — sem exigir Ctrl/Cmd, apenas o mouse — ver seções 2.6/2.7/2.8; o campo `code` não é solicitado, é gerado automaticamente a partir do `type` escolhido).
     * Modal de Edição de Requisito (título, descrição, tipo e prioridade; `code` é exibido somente leitura, pois é imutável após o cadastro).
     * Modal de Cadastro de Ator (nome e descrição em Markdown).
     * Modal de Edição de Ator (pré-preenchido com dados do ator selecionado).
