@@ -25,7 +25,20 @@
                         {% for req in requirements %}
                             <tr>
                                 <td class="fw-semibold">{{ req.display_id }}</td>
-                                <td class="fw-semibold">{{ req.code }}</td>
+                                <td class="fw-semibold">
+                                    <button type="button" class="btn btn-link p-0 fw-semibold text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalViewRequirement"
+                                        data-req-code="{{ req.code }}"
+                                        data-req-title="{{ req.title }}"
+                                        data-req-description="{{ req.description }}"
+                                        data-req-type="{{ req.type.value }}"
+                                        data-req-priority="{{ req.priority.value }}"
+                                        data-req-status="{{ req.status.value }}"
+                                        data-req-task-ids="{% for task in req.linked_tasks %}{{ task.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                                        data-req-actor-ids="{% for actor in req.linked_actors %}{{ actor.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                                        title="Ver requisito (somente leitura)">
+                                        {{ req.code }}
+                                    </button>
+                                </td>
                                 <td>
                                     {{ req.title }}
                                     {% if req.description %}
@@ -116,7 +129,7 @@
                                 </td>
                                 <td>
                                     <div class="d-flex gap-1">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditRequirement" data-req-id="{{ req.id }}" data-req-code="{{ req.code }}" data-req-title="{{ req.title|escapejs }}" data-req-description="{{ req.description|escapejs }}" data-req-type="{{ req.type.value }}" data-req-priority="{{ req.priority.value }}" title="Editar requisito">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditRequirement" data-req-id="{{ req.id }}" data-req-code="{{ req.code }}" data-req-title="{{ req.title }}" data-req-description="{{ req.description }}" data-req-type="{{ req.type.value }}" data-req-priority="{{ req.priority.value }}" data-req-task-ids="{% for task in req.linked_tasks %}{{ task.id }}{% if not forloop.last %},{% endif %}{% endfor %}" data-req-actor-ids="{% for actor in req.linked_actors %}{{ actor.id }}{% if not forloop.last %},{% endif %}{% endfor %}" title="Editar requisito">
                                             <i class="bi bi-pencil"></i>
                                         </button>
                                         <form method="POST" action="/web/requirements/{{ req.id }}/delete" class="d-inline" data-entity-type="requisito">

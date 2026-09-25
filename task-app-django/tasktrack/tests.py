@@ -690,6 +690,49 @@ class TaskTrackUnitAndIntegrationTests(TestCase):
         linked = self.requirement_repo.list_linked_tasks(requirement.id)
         self.assertEqual([t.id for t in linked], [self.task.id])
 
+    def test_web_update_requirement_syncs_task_and_actor_links(self):
+        """A edição do requisito também permite vincular/desvincular Tarefas e Atores (checkboxes)."""
+        actor_a = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(CreateActorSchema(contract_id=self.contract.id, name="Cliente"))
+        actor_b = CreateActorUseCase(self.actor_repo, self.contract_repo).execute(CreateActorSchema(contract_id=self.contract.id, name="Atendente"))
+        other_task = self.task_repo.save(
+            Task(project_id=self.project.id, title="Outra Tarefa", status=TaskStatus.PENDING)
+        )
+
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(
+            CreateRequirementSchema(project_id=self.project.id, title="Autenticação", type=RequirementType.FUNCTIONAL)
+        )
+        LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(requirement.id, self.task.id)
+        LinkActorToRequirementUseCase(self.requirement_repo, self.actor_repo).execute(requirement.id, actor_a.id)
+
+        # Edição: desmarca self.task/actor_a, marca other_task/actor_b.
+        response = self.client.post(
+            f"/web/requirements/{requirement.id}",
+            {
+                "title": "Autenticação",
+                "task_ids": [str(other_task.id)],
+                "actor_ids": [str(actor_b.id)],
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+
+        linked_tasks = self.requirement_repo.list_linked_tasks(requirement.id)
+        self.assertEqual([t.id for t in linked_tasks], [other_task.id])
+
+        linked_actors = self.requirement_repo.list_linked_actors(requirement.id)
+        self.assertEqual([a.id for a in linked_actors], [actor_b.id])
+
+    def test_web_update_requirement_unlinks_all_when_no_checkbox_checked(self):
+        """Como o formulário de edição envia sempre o conjunto completo de vínculos desejado,
+        não marcar nenhum checkbox de tarefa/ator remove todos os vínculos existentes."""
+        requirement = CreateRequirementUseCase(self.requirement_repo, self.project_repo).execute(
+            CreateRequirementSchema(project_id=self.project.id, title="Autenticação", type=RequirementType.FUNCTIONAL)
+        )
+        LinkRequirementToTaskUseCase(self.requirement_repo, self.task_repo).execute(requirement.id, self.task.id)
+
+        response = self.client.post(f"/web/requirements/{requirement.id}", {"title": "Autenticação"})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.requirement_repo.list_linked_tasks(requirement.id), [])
+
     def test_api_create_requirement_endpoint(self):
         response = self.client.post(
             "/api/v1/requirements",

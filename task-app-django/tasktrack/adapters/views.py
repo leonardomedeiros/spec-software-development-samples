@@ -773,10 +773,13 @@ def web_update_requirement_view(request, requirement_id: str):
             messages.error(request, "Você não tem permissão para modificar este requisito.")
             return redirect("/")
         try:
+            req_uuid = UUID(requirement_id)
             title = request.POST.get("title", "").strip()
             description = request.POST.get("description", "").strip()
             type_str = request.POST.get("type", "").strip()
             priority_str = request.POST.get("priority", "").strip()
+            task_ids = {UUID(t) for t in request.POST.getlist("task_ids") if t}
+            actor_ids = {UUID(a) for a in request.POST.getlist("actor_ids") if a}
 
             dto = UpdateRequirementSchema(
                 title=title if title else None,
@@ -784,7 +787,21 @@ def web_update_requirement_view(request, requirement_id: str):
                 type=RequirementType(type_str) if type_str else None,
                 priority=RequirementPriority(priority_str) if priority_str else None,
             )
-            UpdateRequirementUseCase(requirement_repo, project_repo).execute(UUID(requirement_id), dto)
+            with transaction.atomic():
+                UpdateRequirementUseCase(requirement_repo, project_repo).execute(req_uuid, dto)
+
+                current_task_ids = {t.id for t in requirement_repo.list_linked_tasks(req_uuid)}
+                for task_id in current_task_ids - task_ids:
+                    UnlinkRequirementFromTaskUseCase(requirement_repo).execute(req_uuid, task_id)
+                for task_id in task_ids - current_task_ids:
+                    LinkRequirementToTaskUseCase(requirement_repo, task_repo).execute(req_uuid, task_id)
+
+                current_actor_ids = {a.id for a in requirement_repo.list_linked_actors(req_uuid)}
+                for actor_id in current_actor_ids - actor_ids:
+                    UnlinkActorFromRequirementUseCase(requirement_repo).execute(req_uuid, actor_id)
+                for actor_id in actor_ids - current_actor_ids:
+                    LinkActorToRequirementUseCase(requirement_repo, actor_repo).execute(req_uuid, actor_id)
+
             messages.success(request, "Requisito atualizado com sucesso!")
         except ValidationError as e:
             msg = e.errors()[0].get("msg", "Dados inválidos.")

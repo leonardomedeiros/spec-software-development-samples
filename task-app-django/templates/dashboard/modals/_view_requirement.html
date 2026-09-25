@@ -1,0 +1,84 @@
+<!-- MODAL: VISUALIZAR REQUISITO (somente leitura) -->
+<div class="modal fade" id="modalViewRequirement" tabindex="-1" aria-labelledby="modalViewRequirementLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="modalViewRequirementLabel"><i class="bi bi-eye me-2"></i>Visualizar Requisito</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Código</label>
+                    <input type="text" id="viewReqCode" class="form-control" disabled>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Título</label>
+                    <input type="text" id="viewReqTitle" class="form-control" disabled>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Descrição (Suporta Markdown)</label>
+                    <textarea id="viewReqDescription" class="form-control" style="min-height: 200px; resize: vertical;" disabled></textarea>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">Tipo</label>
+                        <select id="viewReqType" class="form-select" disabled>
+                            <option value="FUNCTIONAL">FUNCTIONAL</option>
+                            <option value="NON_FUNCTIONAL">NON_FUNCTIONAL</option>
+                            <option value="BUSINESS_RULE">BUSINESS_RULE</option>
+                            <option value="TECHNICAL_CONSTRAINT">TECHNICAL_CONSTRAINT</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">Prioridade</label>
+                        <select id="viewReqPriority" class="form-select" disabled>
+                            <option value="LOW">LOW (Baixa)</option>
+                            <option value="MEDIUM">MEDIUM (Média)</option>
+                            <option value="HIGH">HIGH (Alta)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-semibold">Status</label>
+                        <select id="viewReqStatus" class="form-select" disabled>
+                            <option value="DRAFT">DRAFT</option>
+                            <option value="APPROVED">APPROVED</option>
+                            <option value="IMPLEMENTED">IMPLEMENTED</option>
+                            <option value="DEPRECATED">DEPRECATED</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Tarefas Vinculadas</label>
+                        <div class="border rounded p-2" id="viewReqTasks" style="max-height: 220px; overflow-y: auto;">
+                            {% for task in all_tasks %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" disabled value="{{ task.id }}" id="viewReqTask{{ forloop.counter }}">
+                                    <label class="form-check-label" for="viewReqTask{{ forloop.counter }}">{{ task.title }}</label>
+                                </div>
+                            {% empty %}
+                                <div class="text-muted small">Nenhuma tarefa disponível.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold">Atores Vinculados</label>
+                        <div class="border rounded p-2" id="viewReqActors" style="max-height: 220px; overflow-y: auto;">
+                            {% for actor in actors %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" disabled value="{{ actor.id }}" id="viewReqActor{{ forloop.counter }}">
+                                    <label class="form-check-label" for="viewReqActor{{ forloop.counter }}">{{ actor.name }}</label>
+                                </div>
+                            {% empty %}
+                                <div class="text-muted small">Nenhum ator disponível.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-arrow-left me-1"></i>Voltar</button>
+            </div>
+        </div>
+    </div>
+</div>

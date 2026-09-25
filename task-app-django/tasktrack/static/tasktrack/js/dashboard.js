@@ -149,6 +149,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Marca (checked = true/false) as checkboxes de um container cujo value esteja na lista de ids fornecida.
+// idsAttr é uma string separada por vírgulas (ex: "id1,id2"); containerId é o elemento que envolve os checkboxes.
+function _syncCheckboxesFromIds(containerId, idsAttr) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const ids = new Set((idsAttr || '').split(',').map(function (id) { return id.trim(); }).filter(Boolean));
+    container.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
+        checkbox.checked = ids.has(checkbox.value);
+    });
+}
+
 // Handle edit requirement modal prefill
 document.addEventListener('DOMContentLoaded', function() {
     const modalEditReq = document.getElementById('modalEditRequirement');
@@ -164,8 +175,31 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('editReqDescription').value = button.getAttribute('data-req-description') || '';
             document.getElementById('editReqType').value = button.getAttribute('data-req-type') || '';
             document.getElementById('editReqPriority').value = button.getAttribute('data-req-priority') || '';
+            _syncCheckboxesFromIds('editReqTasks', button.getAttribute('data-req-task-ids'));
+            _syncCheckboxesFromIds('editReqActors', button.getAttribute('data-req-actor-ids'));
 
             formEditReq.action = `/web/requirements/${reqId}`;
+        });
+    }
+});
+
+// Handle view requirement modal (somente leitura)
+document.addEventListener('DOMContentLoaded', function() {
+    const modalViewReq = document.getElementById('modalViewRequirement');
+    if (modalViewReq) {
+        modalViewReq.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            if (!button) return;
+
+            document.getElementById('viewReqCode').value = button.getAttribute('data-req-code') || '';
+            document.getElementById('viewReqTitle').value = button.getAttribute('data-req-title') || '';
+            document.getElementById('viewReqDescription').value = button.getAttribute('data-req-description') || '';
+            document.getElementById('viewReqType').value = button.getAttribute('data-req-type') || '';
+            document.getElementById('viewReqPriority').value = button.getAttribute('data-req-priority') || '';
+            document.getElementById('viewReqStatus').value = button.getAttribute('data-req-status') || '';
+
+            _syncCheckboxesFromIds('viewReqTasks', button.getAttribute('data-req-task-ids'));
+            _syncCheckboxesFromIds('viewReqActors', button.getAttribute('data-req-actor-ids'));
         });
     }
 });

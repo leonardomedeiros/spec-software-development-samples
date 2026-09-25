@@ -1,6 +1,6 @@
 <!-- MODAL: EDITAR REQUISITO -->
 <div class="modal fade" id="modalEditRequirement" tabindex="-1" aria-labelledby="modalEditRequirementLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <form method="POST" id="formEditRequirement" action="">
             {% csrf_token %}
             <div class="modal-content">
@@ -39,6 +39,36 @@
                                 <option value="MEDIUM">MEDIUM (Média)</option>
                                 <option value="HIGH">HIGH (Alta)</option>
                             </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Tarefas Vinculadas</label>
+                            <div class="border rounded p-2" id="editReqTasks" style="max-height: 220px; overflow-y: auto;">
+                                {% for task in all_tasks %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="task_ids" value="{{ task.id }}" id="editReqTask{{ forloop.counter }}">
+                                        <label class="form-check-label" for="editReqTask{{ forloop.counter }}">{{ task.title }}</label>
+                                    </div>
+                                {% empty %}
+                                    <div class="text-muted small">Nenhuma tarefa disponível.</div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-text">Marque/desmarque para vincular ou desvincular tarefas.</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Atores Vinculados</label>
+                            <div class="border rounded p-2" id="editReqActors" style="max-height: 220px; overflow-y: auto;">
+                                {% for actor in actors %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="actor_ids" value="{{ actor.id }}" id="editReqActor{{ forloop.counter }}">
+                                        <label class="form-check-label" for="editReqActor{{ forloop.counter }}">{{ actor.name }}</label>
+                                    </div>
+                                {% empty %}
+                                    <div class="text-muted small">Nenhum ator disponível.</div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-text">Marque/desmarque para vincular ou desvincular atores.</div>
                         </div>
                     </div>
                 </div>
