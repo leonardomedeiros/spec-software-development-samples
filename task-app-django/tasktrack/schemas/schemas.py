@@ -187,18 +187,10 @@ class TaskResponseSchema(BaseModel):
 
 class CreateRequirementSchema(BaseModel):
     project_id: UUID
-    code: str = Field(..., min_length=2, max_length=20)
     title: str = Field(..., min_length=3, max_length=150)
     description: Optional[str] = None
     type: RequirementType
     priority: RequirementPriority = RequirementPriority.MEDIUM
-
-    @field_validator("code")
-    @classmethod
-    def validate_code_not_blank(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("O código do requisito não pode ser composto apenas por espaços em branco.")
-        return v.strip()
 
     @field_validator("title")
     @classmethod
@@ -211,20 +203,10 @@ class CreateRequirementSchema(BaseModel):
 
 class UpdateRequirementSchema(BaseModel):
     project_id: Optional[UUID] = None
-    code: Optional[str] = Field(None, min_length=2, max_length=20)
     title: Optional[str] = Field(None, min_length=3, max_length=150)
     description: Optional[str] = None
     type: Optional[RequirementType] = None
     priority: Optional[RequirementPriority] = None
-
-    @field_validator("code")
-    @classmethod
-    def validate_code_not_blank(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        if not v.strip():
-            raise ValueError("O código do requisito não pode ser composto apenas por espaços em branco.")
-        return v.strip()
 
     @field_validator("title")
     @classmethod

@@ -715,7 +715,6 @@ def web_delete_task_view(request, task_id: str):
 @login_required(login_url="/login")
 def web_create_requirement_view(request):
     if request.method == "POST":
-        code = request.POST.get("code", "")
         title = request.POST.get("title", "")
         description = request.POST.get("description", "")
         req_type = request.POST.get("type", "")
@@ -732,7 +731,6 @@ def web_create_requirement_view(request):
 
             dto = CreateRequirementSchema(
                 project_id=project_id,
-                code=code,
                 title=title,
                 description=description,
                 type=RequirementType(req_type),
@@ -748,7 +746,7 @@ def web_create_requirement_view(request):
                     LinkActorToRequirementUseCase(requirement_repo, actor_repo).execute(
                         requirement.id, UUID(actor_id)
                     )
-            messages.success(request, f"Requisito '{code}' cadastrado com sucesso!")
+            messages.success(request, f"Requisito '{requirement.code}' cadastrado com sucesso!")
         except ValidationError as e:
             msg = e.errors()[0].get("msg", "Dados do requisito inválidos.")
             messages.error(request, f"Erro ao criar requisito: {msg}")
@@ -775,14 +773,12 @@ def web_update_requirement_view(request, requirement_id: str):
             messages.error(request, "Você não tem permissão para modificar este requisito.")
             return redirect("/")
         try:
-            code = request.POST.get("code", "").strip()
             title = request.POST.get("title", "").strip()
             description = request.POST.get("description", "").strip()
             type_str = request.POST.get("type", "").strip()
             priority_str = request.POST.get("priority", "").strip()
 
             dto = UpdateRequirementSchema(
-                code=code if code else None,
                 title=title if title else None,
                 description=description if description else None,
                 type=RequirementType(type_str) if type_str else None,

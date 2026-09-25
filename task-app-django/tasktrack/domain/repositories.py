@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from uuid import UUID
 from ..domain.entities import Actor, Contract, Project, Requirement, Task, User
+from ..domain.enums import RequirementType
 
 
 class IUserRepository(ABC):
@@ -119,6 +120,10 @@ class IRequirementRepository(ABC):
 
     @abstractmethod
     def next_display_id(self) -> str:
+        pass
+
+    @abstractmethod
+    def next_code(self, req_type: RequirementType) -> str:
         pass
 
     @abstractmethod

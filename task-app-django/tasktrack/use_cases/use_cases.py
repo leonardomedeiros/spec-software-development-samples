@@ -8,7 +8,6 @@ from ..domain.exceptions import (
     ContractNotFoundError,
     InvalidStatusTransitionError,
     ProjectNotFoundError,
-    RequirementCodeAlreadyExistsError,
     RequirementNotFoundError,
     TaskNotFoundError,
     UserNotFoundError,
@@ -327,14 +326,12 @@ class CreateRequirementUseCase:
     def execute(self, dto: CreateRequirementSchema) -> Requirement:
         if not self.project_repo.get_by_id(dto.project_id):
             raise ProjectNotFoundError("Projeto não encontrado")
-        if any(r.code == dto.code for r in self.requirement_repo.list_all()):
-            raise RequirementCodeAlreadyExistsError(f"Já existe um requisito com o código '{dto.code}'.")
 
         requirement = Requirement(
             id=uuid4(),
             display_id=self.requirement_repo.next_display_id(),
             project_id=dto.project_id,
-            code=dto.code,
+            code=self.requirement_repo.next_code(dto.type),
             title=dto.title,
             description=dto.description or "",
             type=dto.type,
@@ -358,10 +355,6 @@ class UpdateRequirementUseCase:
             if not self.project_repo.get_by_id(dto.project_id):
                 raise ProjectNotFoundError("Projeto não encontrado")
             requirement.project_id = dto.project_id
-        if dto.code is not None and dto.code != requirement.code:
-            if any(r.code == dto.code for r in self.requirement_repo.list_all()):
-                raise RequirementCodeAlreadyExistsError(f"Já existe um requisito com o código '{dto.code}'.")
-            requirement.code = dto.code
         if dto.title is not None:
             requirement.title = dto.title
         if dto.description is not None:

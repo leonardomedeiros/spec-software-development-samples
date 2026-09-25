@@ -44,6 +44,14 @@ def _next_sequence_value(prefix: str) -> int:
         return sequence.last_value
 
 
+_REQUIREMENT_CODE_PREFIXES = {
+    RequirementType.FUNCTIONAL: "RF",
+    RequirementType.NON_FUNCTIONAL: "RNF",
+    RequirementType.BUSINESS_RULE: "RN",
+    RequirementType.TECHNICAL_CONSTRAINT: "RT",
+}
+
+
 class DjangoUserRepository(IUserRepository):
     def get_by_id(self, user_id: UUID) -> Optional[User]:
         try:
@@ -359,6 +367,10 @@ class DjangoRequirementRepository(IRequirementRepository):
 
     def next_display_id(self) -> str:
         return f"REQ{_next_sequence_value('REQ')}"
+
+    def next_code(self, req_type: RequirementType) -> str:
+        prefix = _REQUIREMENT_CODE_PREFIXES[req_type]
+        return f"{prefix}-{_next_sequence_value(prefix):02d}"
 
     def delete(self, requirement_id: UUID) -> None:
         RequirementModel.objects.filter(id=requirement_id).delete()

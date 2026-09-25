@@ -22,10 +22,6 @@
                         {% endif %}
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Código (único) *</label>
-                        <input type="text" name="code" class="form-control" placeholder="ex: RF-01" required minlength="2" maxlength="20">
-                    </div>
-                    <div class="mb-3">
                         <label class="form-label fw-semibold">Título (3 a 150 caracteres) *</label>
                         <input type="text" name="title" class="form-control" placeholder="ex: Autenticação de Usuários" required minlength="3" maxlength="150">
                     </div>
@@ -42,6 +38,7 @@
                                 <option value="BUSINESS_RULE">BUSINESS_RULE</option>
                                 <option value="TECHNICAL_CONSTRAINT">TECHNICAL_CONSTRAINT</option>
                             </select>
+                            <div class="form-text">O código (ex: RF, RNF, RN, RT + número sequencial) é gerado automaticamente a partir do tipo.</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Prioridade *</label>

@@ -173,7 +173,7 @@ CREATE TABLE task_history (
 CREATE TABLE requirements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE, -- seção 2.6 e 2.8
-    code VARCHAR(20) UNIQUE NOT NULL, -- código único, ex: 'RF-01'
+    code VARCHAR(20) UNIQUE NOT NULL, -- código único, gerado automaticamente pelo sistema a partir de req_type (ex: 'RF-01', 'RNF-01'); não é informado pelo cliente
     title VARCHAR(150) NOT NULL,
     description TEXT,
     req_type VARCHAR(25) NOT NULL DEFAULT 'FUNCTIONAL', -- 'FUNCTIONAL', 'NON_FUNCTIONAL', 'BUSINESS_RULE', 'TECHNICAL_CONSTRAINT'
@@ -240,7 +240,7 @@ CREATE TABLE actors (
 ### 2.6 Requisitos e Vínculo com Tarefas
 
 * Todo Requisito pertence a exatamente um Projeto (`project_id`, obrigatório, FK para `projects`, `ON DELETE CASCADE`) — ver seção 2.8 para as regras de visibilidade derivadas dessa associação. Além disso, um Requisito (`code`, `title`, `description` em Markdown, `type`, `priority`, `status`) pode ser vinculado a uma ou mais Tarefas, e uma Tarefa pode atender a vários Requisitos (N:N), por meio da tabela `requirement_task_links`.
-* O campo `code` é único em todo o sistema (ex: `RF-01`, `RNF-02`); tentar cadastrar ou editar um requisito para um código já utilizado é rejeitado.
+* O campo `code` **não é informado pelo cliente**: é gerado automaticamente pelo servidor no momento do cadastro, com base no `type` do requisito, seguindo o mesmo mecanismo de sequência atômica usado para o `display_id` de Tarefa e Projeto (seções 2.1/2.4). O prefixo depende do tipo — `FUNCTIONAL` → `RF-NN`, `NON_FUNCTIONAL` → `RNF-NN`, `BUSINESS_RULE` → `RN-NN`, `TECHNICAL_CONSTRAINT` → `RT-NN` —, com numeração sequencial própria por prefixo (ex.: `RF-01`, `RF-02`, `RNF-01`). Por ser gerado pelo servidor, `code` é sempre único e **não pode ser alterado** na edição do requisito (campo somente leitura).
 * O `project_id` é exigido na criação (`POST /web/requirements` ou `POST /api/v1/requirements`) e pode ser alterado na edição; tentar informar um `project_id` inexistente é rejeitado com `404 Not Found`/`ProjectNotFoundError`.
 * `type` aceita `FUNCTIONAL`, `NON_FUNCTIONAL`, `BUSINESS_RULE` ou `TECHNICAL_CONSTRAINT`. `priority` aceita `LOW`, `MEDIUM` ou `HIGH`.
 * `status` é um campo próprio do requisito (não é calculado a partir das tarefas vinculadas, ao contrário do status do Projeto — ver seção 2.3), com transições: `DRAFT -> {APPROVED, DEPRECATED}`, `APPROVED -> {IMPLEMENTED, DRAFT, DEPRECATED}`, `IMPLEMENTED -> {APPROVED, DEPRECATED}`. `DEPRECATED` é um estado final e não pode retornar para outro status.
@@ -363,7 +363,8 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
     * Modal de Cadastro de Tarefa (descrição expandida 400px min-height = ~20 linhas, redimensionável, suporta Markdown, com seleção de prioridade, projeto, responsável e data de vencimento).
     * Modal de Edição de Tarefa (permite atualizar todos os campos incluindo descrição em Markdown com 400px min-height = ~20 linhas, redimensionável, github_url; pré-preenchido com dados da tarefa selecionada).
     * Modal de Cadastro de Usuários (para membros da equipe).
-    * Modal de Cadastro de Requisito (exige a seleção de um Projeto, dentre os visíveis ao usuário; descrição em Markdown, com seleção múltipla de Tarefas e de Atores a vincular já na criação — ver seções 2.6/2.7/2.8).
+    * Modal de Cadastro de Requisito (exige a seleção de um Projeto, dentre os visíveis ao usuário; descrição em Markdown, com seleção múltipla de Tarefas e de Atores a vincular já na criação — ver seções 2.6/2.7/2.8; o campo `code` não é solicitado, é gerado automaticamente a partir do `type` escolhido).
+    * Modal de Edição de Requisito (título, descrição, tipo e prioridade; `code` é exibido somente leitura, pois é imutável após o cadastro).
     * Modal de Cadastro de Ator (nome e descrição em Markdown).
     * Modal de Edição de Ator (pré-preenchido com dados do ator selecionado).
 
@@ -432,7 +433,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **Entrar:** `POST /login` (Campos: `username` com o e-mail e `password`).
 * **Sair:** `GET /logout`.
 * **Cadastrar Requisito:** `POST /web/requirements` (Campos: `project_id` [obrigatório], `code`, `title`, `description`, `type`, `priority`, `task_ids` [opcional, lista de UUIDs de tarefas a vincular] e `actor_ids` [opcional, lista de UUIDs de atores a vincular]). A criação do requisito e os vínculos com tarefas/atores ocorrem em uma única transação: se algum `task_id`/`actor_id` informado não existir, nada é persistido (o requisito não é criado). Se o usuário não tiver acesso ao `project_id` informado (seção 2.8), a operação é recusada.
-* **Editar Requisito:** `POST /web/requirements/{requirement_id}` (Campos opcionais: `code`, `title`, `description`, `type`, `priority` — atualização parcial, igual à edição de tarefa).
+* **Editar Requisito:** `POST /web/requirements/{requirement_id}` (Campos opcionais: `title`, `description`, `type`, `priority` — atualização parcial, igual à edição de tarefa; `code` não é aceito, pois é imutável — ver RN-08).
 * **Alterar status do Requisito:** `POST /web/requirements/{requirement_id}/status` (Campo: `status`, conforme transições da seção 2.6).
 * **Vincular/Desvincular Tarefa ao Requisito:** `POST /web/requirements/{requirement_id}/tasks` (Campos: `action` com `add` ou `remove`, e `task_id`).
 * **Vincular/Desvincular Ator ao Requisito:** `POST /web/requirements/{requirement_id}/actors` (Campos: `action` com `add` ou `remove`, e `actor_id`, conforme seção 2.7).
@@ -648,11 +649,10 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 
 ### 4.7 Requisitos (Requirements)
 * **Listar / Criar:** `GET /api/v1/requirements` (lista todos) e `POST /api/v1/requirements`
-* **Request Body (criação):**
+* **Request Body (criação):** o campo `code` **não é enviado pelo cliente** — é gerado automaticamente pelo servidor a partir de `type` (ver seção 2.6).
 ```json
 {
   "project_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-  "code": "RF-01",
   "title": "Autenticação de Usuários",
   "description": "O sistema deve permitir login via e-mail e senha.",
   "type": "FUNCTIONAL",
@@ -660,10 +660,10 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 }
 ```
 * **Respostas (criação):**
-  * `201 Created`: Retorna o objeto completo do requisito criado (inclui `project_id`).
-  * `400 Bad Request`: Código já utilizado por outro requisito, ou `project_id` inexistente.
+  * `201 Created`: Retorna o objeto completo do requisito criado (inclui `project_id` e o `code` gerado automaticamente, ex.: `"RF-01"`).
+  * `400 Bad Request`: `project_id` inexistente.
   * `422 Unprocessable Entity`: Dados de entrada inválidos (ex.: `project_id` ausente).
-* **Editar / Excluir:** `PUT`/`PATCH /api/v1/requirements/{requirement_id}` (campos opcionais, mesmo padrão da edição de tarefa) e `DELETE /api/v1/requirements/{requirement_id}`.
+* **Editar / Excluir:** `PUT`/`PATCH /api/v1/requirements/{requirement_id}` (campos opcionais, mesmo padrão da edição de tarefa; `code` não é aceito no corpo — é imutável) e `DELETE /api/v1/requirements/{requirement_id}`.
   * `200 OK` / `204 No Content` em caso de sucesso; `404 Not Found` se o requisito não existir.
 * **Alterar Status:** `PATCH /api/v1/requirements/{requirement_id}/status` com `{"status": "APPROVED"}` (transições conforme seção 2.6).
   * `400 Bad Request` com `"INVALID_STATUS_TRANSITION"` se a transição não for permitida.
@@ -705,7 +705,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
   * Renderização: Cliente responsável por renderizar Markdown em exibição (se necessário)
   * UI: Campos textarea expandidos com `min-height: 400px` (~20 linhas) | Redimensionáveis verticalmente | Dicas de formatação
   * Experiência: Editor tem ampla visão das descrições para documenta completamente (contratos, projetos, tarefas)
-* **RN-08 (Código Único de Requisito):** O campo `code` de um Requisito é único em todo o sistema; criar ou editar um requisito para um `code` já usado por outro requisito deve ser rejeitado.
+* **RN-08 (Código Gerado Automaticamente):** O campo `code` de um Requisito não é informado pelo cliente; é gerado automaticamente pelo servidor na criação, a partir do `type` (prefixo `RF`/`RNF`/`RN`/`RT`) e de uma sequência numérica própria por prefixo (mesmo mecanismo de `display_id` de Tarefa/Projeto — seções 2.1/2.4), garantindo unicidade. O campo é imutável após o cadastro (não pode ser alterado na edição).
 * **RN-09 (Ciclo de Vida do Status do Requisito):** Transições permitidas: `DRAFT ➔ APPROVED`, `DRAFT ➔ DEPRECATED`, `APPROVED ➔ IMPLEMENTED`, `APPROVED ➔ DRAFT`, `APPROVED ➔ DEPRECATED`, `IMPLEMENTED ➔ APPROVED`, `IMPLEMENTED ➔ DEPRECATED`. `DEPRECATED` é um estado final (não retorna a outro status). Ao contrário do status do Projeto, o status do Requisito **não** é calculado a partir das tarefas vinculadas.
 
 ### 5.2 Casos de Borda (CB)
@@ -717,7 +717,7 @@ A aplicação disponibiliza uma interface visual completa renderizada via Django
 * **CB-06 (Edição de Tarefa Inexistente):** Tentar editar uma tarefa com `task_id` inexistente deve retornar `404 Not Found` com mensagem `"Tarefa não encontrada"`.
 * **CB-07 (Exclusão de Tarefa Inexistente):** Tentar excluir uma tarefa com `task_id` inexistente deve retornar `404 Not Found` com mensagem `"Tarefa não encontrada"`.
 * **CB-08 (Edição de Tarefa com Vencimento já Vencido):** Editar via web (`POST /web/tasks/{task_id}`) qualquer campo (ex.: `title`) de uma tarefa cuja `due_date` já é hoje ou passada, reenviando essa mesma `due_date` inalterada (comportamento do formulário, que pré-preenche o campo), deve ser aceito normalmente (`302` redirect + mensagem de sucesso), sem disparar o erro de RN-02, pois o valor não mudou.
-* **CB-09 (Código de Requisito Duplicado):** Tentar criar ou editar um requisito para um `code` já usado por outro requisito deve retornar `400 Bad Request`.
+* **CB-09 (Código de Requisito Gerado pelo Servidor):** Um `code` enviado pelo cliente na criação ou edição de um Requisito é ignorado; o valor persistido é sempre o gerado automaticamente pelo servidor (RN-08), portanto colisões de código não podem ocorrer via API/formulário.
 * **CB-10 (Vínculo com Requisito ou Tarefa Inexistente):** Tentar vincular/desvincular uma tarefa a um `requirement_id` inexistente, ou uma tarefa com `task_id` inexistente, deve retornar `404 Not Found`.
 * **CB-11 (Edição/Exclusão de Contrato Inexistente):** Tentar editar (`PUT`/`PATCH`/`POST /web/contracts/{id}`) ou excluir (`DELETE`/`POST /web/contracts/{id}/delete`) um contrato com `contract_id` inexistente deve retornar `404 Not Found` (API) ou redirecionar com mensagem de erro (web), sem erro 500.
 * **CB-12 (Edição/Exclusão de Projeto Inexistente):** Tentar editar ou excluir um projeto com `project_id` inexistente deve retornar `404 Not Found` (API) ou redirecionar com mensagem de erro (web), sem erro 500.
