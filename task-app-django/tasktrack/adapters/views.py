@@ -66,6 +66,13 @@ from ..schemas.schemas import (
     UpdateTaskStatusSchema,
     UpdateTaskSchema,
 )
+from ..forms import (
+    ActorEditForm,
+    ContractEditForm,
+    ProjectEditForm,
+    RequirementEditForm,
+    TaskEditForm,
+)
 from ..use_cases.specification_export import export_requirements_section
 from ..use_cases.use_cases import (
     CreateActorUseCase,
@@ -408,36 +415,51 @@ def web_update_contract_status_view(request, contract_id: str):
 
 @login_required(login_url="/login")
 def web_update_contract_view(request, contract_id: str):
-    if request.method == "POST":
-        try:
-            contract_uuid = UUID(contract_id)
-        except ValueError:
-            messages.error(request, "ID do contrato inválido.")
-            return redirect("/")
+    try:
+        contract_uuid = UUID(contract_id)
+    except ValueError:
+        messages.error(request, "ID do contrato inválido.")
+        return redirect("/")
 
-        title = request.POST.get("title", "").strip()
-        description = request.POST.get("description", "").strip()
-        owner_id_str = request.POST.get("owner_id", "").strip()
+    contract = contract_repo.get_by_id(contract_uuid)
+    if not contract:
+        messages.error(request, "Contrato não encontrado.")
+        return redirect("/")
 
-        try:
-            dto = UpdateContractSchema(
-                title=title if title else None,
-                description=description if description else None,
-                owner_id=UUID(owner_id_str) if owner_id_str else None,
-            )
-            UpdateContractUseCase(contract_repo=contract_repo, user_repo=user_repo).execute(contract_uuid, dto)
-            messages.success(request, "Contrato atualizado com sucesso!")
-        except ValidationError as e:
-            msg = e.errors()[0].get("msg", "Dados do contrato inválidos.")
-            messages.error(request, f"Erro de validação: {msg}")
-        except ValueError as e:
-            messages.error(request, f"Dados inválidos: {str(e)}")
-        except UserNotFoundError as e:
-            messages.error(request, f"Usuário não encontrado: {e.message}")
-        except ContractNotFoundError as e:
-            messages.error(request, f"Contrato não encontrado: {e.message}")
-        except DomainError as e:
-            messages.error(request, f"Erro de domínio: {e}")
+    users = user_repo.list_all()
+
+    if request.method == "GET":
+        form = ContractEditForm(
+            initial={"title": contract.title, "description": contract.description or "", "owner_id": str(contract.owner_id)},
+            users=users,
+        )
+        return render(request, "edit/edit_contract.html", {"form": form, "contract": contract})
+
+    form = ContractEditForm(request.POST, users=users)
+    if not form.is_valid():
+        return render(request, "edit/edit_contract.html", {"form": form, "contract": contract})
+
+    try:
+        cd = form.cleaned_data
+        dto = UpdateContractSchema(
+            title=cd["title"] or None,
+            description=cd["description"] or None,
+            owner_id=UUID(cd["owner_id"]) if cd["owner_id"] else None,
+        )
+        UpdateContractUseCase(contract_repo=contract_repo, user_repo=user_repo).execute(contract_uuid, dto)
+        messages.success(request, "Contrato atualizado com sucesso!")
+    except ValidationError as e:
+        msg = e.errors()[0].get("msg", "Dados do contrato inválidos.")
+        messages.error(request, f"Erro de validação: {msg}")
+        return render(request, "edit/edit_contract.html", {"form": form, "contract": contract})
+    except UserNotFoundError as e:
+        messages.error(request, f"Usuário não encontrado: {e.message}")
+        return render(request, "edit/edit_contract.html", {"form": form, "contract": contract})
+    except ContractNotFoundError as e:
+        messages.error(request, f"Contrato não encontrado: {e.message}")
+    except DomainError as e:
+        messages.error(request, f"Erro de domínio: {e}")
+        return render(request, "edit/edit_contract.html", {"form": form, "contract": contract})
 
     return redirect("/")
 
@@ -496,40 +518,55 @@ def web_update_project_team_view(request, project_id: str):
 
 @login_required(login_url="/login")
 def web_update_project_view(request, project_id: str):
-    if request.method == "POST":
-        try:
-            project_uuid = UUID(project_id)
-        except ValueError:
-            messages.error(request, "ID do projeto inválido.")
-            return redirect("/")
+    try:
+        project_uuid = UUID(project_id)
+    except ValueError:
+        messages.error(request, "ID do projeto inválido.")
+        return redirect("/")
 
-        if not _user_can_access_project(request, project_uuid):
-            messages.error(request, "Você não tem permissão para modificar este projeto.")
-            return redirect("/")
+    if not _user_can_access_project(request, project_uuid):
+        messages.error(request, "Você não tem permissão para modificar este projeto.")
+        return redirect("/")
 
-        title = request.POST.get("title", "").strip()
-        description = request.POST.get("description", "").strip()
-        owner_id_str = request.POST.get("owner_id", "").strip()
+    project = project_repo.get_by_id(project_uuid)
+    if not project:
+        messages.error(request, "Projeto não encontrado.")
+        return redirect("/")
 
-        try:
-            dto = UpdateProjectSchema(
-                title=title if title else None,
-                description=description if description else None,
-                owner_id=UUID(owner_id_str) if owner_id_str else None,
-            )
-            UpdateProjectUseCase(project_repo=project_repo, user_repo=user_repo).execute(project_uuid, dto)
-            messages.success(request, "Projeto atualizado com sucesso!")
-        except ValidationError as e:
-            msg = e.errors()[0].get("msg", "Dados do projeto inválidos.")
-            messages.error(request, f"Erro de validação: {msg}")
-        except ValueError as e:
-            messages.error(request, f"Dados inválidos: {str(e)}")
-        except UserNotFoundError as e:
-            messages.error(request, f"Usuário não encontrado: {e.message}")
-        except ProjectNotFoundError as e:
-            messages.error(request, f"Projeto não encontrado: {e.message}")
-        except DomainError as e:
-            messages.error(request, f"Erro de domínio: {e}")
+    users = user_repo.list_all()
+
+    if request.method == "GET":
+        form = ProjectEditForm(
+            initial={"title": project.title, "description": project.description or "", "owner_id": str(project.owner_id)},
+            users=users,
+        )
+        return render(request, "edit/edit_project.html", {"form": form, "project": project})
+
+    form = ProjectEditForm(request.POST, users=users)
+    if not form.is_valid():
+        return render(request, "edit/edit_project.html", {"form": form, "project": project})
+
+    try:
+        cd = form.cleaned_data
+        dto = UpdateProjectSchema(
+            title=cd["title"] or None,
+            description=cd["description"] or None,
+            owner_id=UUID(cd["owner_id"]) if cd["owner_id"] else None,
+        )
+        UpdateProjectUseCase(project_repo=project_repo, user_repo=user_repo).execute(project_uuid, dto)
+        messages.success(request, "Projeto atualizado com sucesso!")
+    except ValidationError as e:
+        msg = e.errors()[0].get("msg", "Dados do projeto inválidos.")
+        messages.error(request, f"Erro de validação: {msg}")
+        return render(request, "edit/edit_project.html", {"form": form, "project": project})
+    except UserNotFoundError as e:
+        messages.error(request, f"Usuário não encontrado: {e.message}")
+        return render(request, "edit/edit_project.html", {"form": form, "project": project})
+    except ProjectNotFoundError as e:
+        messages.error(request, f"Projeto não encontrado: {e.message}")
+    except DomainError as e:
+        messages.error(request, f"Erro de domínio: {e}")
+        return render(request, "edit/edit_project.html", {"form": form, "project": project})
 
     return redirect("/")
 
@@ -621,74 +658,73 @@ def web_update_task_status_view(request, task_id: str):
 
 @login_required(login_url="/login")
 def web_update_task_view(request, task_id: str):
-    if request.method == "POST":
-        try:
-            # Get and validate task exists first
-            try:
-                task_uuid = UUID(task_id)
-            except ValueError:
-                messages.error(request, "ID da tarefa inválido.")
-                return redirect("/")
+    try:
+        task_uuid = UUID(task_id)
+    except ValueError:
+        messages.error(request, "ID da tarefa inválido.")
+        return redirect("/")
 
-            task = task_repo.get_by_id(task_uuid)
-            if not task:
-                messages.error(request, "Tarefa não encontrada.")
-                return redirect("/")
+    task = task_repo.get_by_id(task_uuid)
+    if not task:
+        messages.error(request, "Tarefa não encontrada.")
+        return redirect("/")
 
-            if not _user_can_access_project(request, task.project_id):
-                messages.error(request, "Você não tem permissão para modificar esta tarefa.")
-                return redirect("/")
+    if not _user_can_access_project(request, task.project_id):
+        messages.error(request, "Você não tem permissão para modificar esta tarefa.")
+        return redirect("/")
 
-            # Extract form data
-            title = request.POST.get("title", "").strip()
-            description = request.POST.get("description", "").strip()
-            priority_str = request.POST.get("priority", "").strip()
-            assignee_id_str = request.POST.get("assignee_id", "").strip()
-            due_date_str = request.POST.get("due_date", "").strip()
-            github_url = request.POST.get("github_url", "").strip()
+    users = user_repo.list_all()
+    current_due = task.due_date
+    if isinstance(current_due, datetime):
+        current_due = current_due.date()
 
-            # Parse due_date
-            from datetime import date
-            due_date = None
-            if due_date_str:
-                parsed_due_date = date.fromisoformat(due_date_str)
-                # Only treat as a change if it differs from the task's current
-                # due date; otherwise resubmitting an unchanged (possibly past)
-                # due date would fail the "must be future" validation on every edit.
-                current_due_date = task.due_date
-                if isinstance(current_due_date, datetime):
-                    current_due_date = current_due_date.date()
-                if parsed_due_date != current_due_date:
-                    due_date = parsed_due_date
+    if request.method == "GET":
+        form = TaskEditForm(
+            initial={
+                "title": task.title,
+                "description": task.description or "",
+                "priority": task.priority.value,
+                "assignee_id": str(task.assignee_id) if task.assignee_id else "",
+                "due_date": current_due,
+                "github_url": task.github_url or "",
+            },
+            users=users,
+        )
+        return render(request, "edit/edit_task.html", {"form": form, "task": task})
 
-            # Build DTO with None for empty fields (partial update)
-            dto = UpdateTaskSchema(
-                title=title if title else None,
-                description=description if description else None,
-                priority=TaskPriority(priority_str) if priority_str else None,
-                assignee_id=UUID(assignee_id_str) if assignee_id_str else None,
-                due_date=due_date,
-                github_url=github_url if github_url else None,
-            )
+    form = TaskEditForm(request.POST, users=users)
+    if not form.is_valid():
+        return render(request, "edit/edit_task.html", {"form": form, "task": task})
 
-            # Execute use case
-            use_case = UpdateTaskUseCase(task_repo=task_repo, user_repo=user_repo)
-            use_case.execute(task_uuid, dto)
-            messages.success(request, "Tarefa atualizada com sucesso!")
+    try:
+        cd = form.cleaned_data
+        from datetime import date
+        due_date = None
+        if cd.get("due_date") and cd["due_date"] != current_due:
+            due_date = cd["due_date"]
 
-        except ValidationError as e:
-            msg = e.errors()[0].get("msg", "Dados inválidos.")
-            messages.error(request, f"Erro de validação: {msg}")
-        except UserNotFoundError as e:
-            messages.error(request, f"Usuário não encontrado: {e.message}")
-        except TaskNotFoundError as e:
-            messages.error(request, f"Tarefa não encontrada: {e.message}")
-        except ValueError as e:
-            messages.error(request, f"Dados inválidos: {str(e)}")
-        except DomainError as e:
-            messages.error(request, f"Erro de domínio: {e}")
-        except Exception as e:
-            messages.error(request, f"Erro ao atualizar tarefa: {str(e)}")
+        dto = UpdateTaskSchema(
+            title=cd["title"] or None,
+            description=cd["description"] or None,
+            priority=TaskPriority(cd["priority"]) if cd["priority"] else None,
+            assignee_id=UUID(cd["assignee_id"]) if cd["assignee_id"] else None,
+            due_date=due_date,
+            github_url=cd["github_url"] or None,
+        )
+        UpdateTaskUseCase(task_repo=task_repo, user_repo=user_repo).execute(task_uuid, dto)
+        messages.success(request, "Tarefa atualizada com sucesso!")
+    except ValidationError as e:
+        msg = e.errors()[0].get("msg", "Dados inválidos.")
+        messages.error(request, f"Erro de validação: {msg}")
+        return render(request, "edit/edit_task.html", {"form": form, "task": task})
+    except UserNotFoundError as e:
+        messages.error(request, f"Usuário não encontrado: {e.message}")
+        return render(request, "edit/edit_task.html", {"form": form, "task": task})
+    except TaskNotFoundError as e:
+        messages.error(request, f"Tarefa não encontrada: {e.message}")
+    except DomainError as e:
+        messages.error(request, f"Erro de domínio: {e}")
+        return render(request, "edit/edit_task.html", {"form": form, "task": task})
 
     return redirect("/")
 
@@ -768,48 +804,79 @@ def _guard_requirement_access(request, requirement_id: str) -> bool:
 
 @login_required(login_url="/login")
 def web_update_requirement_view(request, requirement_id: str):
-    if request.method == "POST":
-        if not _guard_requirement_access(request, requirement_id):
-            messages.error(request, "Você não tem permissão para modificar este requisito.")
-            return redirect("/")
-        try:
-            req_uuid = UUID(requirement_id)
-            title = request.POST.get("title", "").strip()
-            description = request.POST.get("description", "").strip()
-            type_str = request.POST.get("type", "").strip()
-            priority_str = request.POST.get("priority", "").strip()
-            task_ids = {UUID(t) for t in request.POST.getlist("task_ids") if t}
-            actor_ids = {UUID(a) for a in request.POST.getlist("actor_ids") if a}
+    if not _guard_requirement_access(request, requirement_id):
+        messages.error(request, "Você não tem permissão para modificar este requisito.")
+        return redirect("/")
 
-            dto = UpdateRequirementSchema(
-                title=title if title else None,
-                description=description if description else None,
-                type=RequirementType(type_str) if type_str else None,
-                priority=RequirementPriority(priority_str) if priority_str else None,
-            )
-            with transaction.atomic():
-                UpdateRequirementUseCase(requirement_repo, project_repo).execute(req_uuid, dto)
+    try:
+        req_uuid = UUID(requirement_id)
+    except ValueError:
+        messages.error(request, "ID do requisito inválido.")
+        return redirect("/")
 
-                current_task_ids = {t.id for t in requirement_repo.list_linked_tasks(req_uuid)}
-                for task_id in current_task_ids - task_ids:
-                    UnlinkRequirementFromTaskUseCase(requirement_repo).execute(req_uuid, task_id)
-                for task_id in task_ids - current_task_ids:
-                    LinkRequirementToTaskUseCase(requirement_repo, task_repo).execute(req_uuid, task_id)
+    requirement = requirement_repo.get_by_id(req_uuid)
+    if not requirement:
+        messages.error(request, "Requisito não encontrado.")
+        return redirect("/")
 
-                current_actor_ids = {a.id for a in requirement_repo.list_linked_actors(req_uuid)}
-                for actor_id in current_actor_ids - actor_ids:
-                    UnlinkActorFromRequirementUseCase(requirement_repo).execute(req_uuid, actor_id)
-                for actor_id in actor_ids - current_actor_ids:
-                    LinkActorToRequirementUseCase(requirement_repo, actor_repo).execute(req_uuid, actor_id)
+    all_tasks = task_repo.list_all()
+    all_actors = actor_repo.list_all()
+    linked_task_ids = [str(t.id) for t in requirement_repo.list_linked_tasks(req_uuid)]
+    linked_actor_ids = [str(a.id) for a in requirement_repo.list_linked_actors(req_uuid)]
 
-            messages.success(request, "Requisito atualizado com sucesso!")
-        except ValidationError as e:
-            msg = e.errors()[0].get("msg", "Dados inválidos.")
-            messages.error(request, f"Erro de validação: {msg}")
-        except ValueError as e:
-            messages.error(request, f"Dados inválidos: {str(e)}")
-        except DomainError as e:
-            messages.error(request, f"Erro de domínio: {e}")
+    if request.method == "GET":
+        form = RequirementEditForm(
+            initial={
+                "title": requirement.title,
+                "description": requirement.description or "",
+                "type": requirement.type.value,
+                "priority": requirement.priority.value,
+                "task_ids": linked_task_ids,
+                "actor_ids": linked_actor_ids,
+            },
+            tasks=all_tasks,
+            actors=all_actors,
+        )
+        return render(request, "edit/edit_requirement.html", {"form": form, "requirement": requirement})
+
+    form = RequirementEditForm(request.POST, tasks=all_tasks, actors=all_actors)
+    if not form.is_valid():
+        return render(request, "edit/edit_requirement.html", {"form": form, "requirement": requirement})
+
+    try:
+        cd = form.cleaned_data
+        task_ids = {UUID(t) for t in cd.get("task_ids", [])}
+        actor_ids = {UUID(a) for a in cd.get("actor_ids", [])}
+
+        dto = UpdateRequirementSchema(
+            title=cd["title"] or None,
+            description=cd["description"] or None,
+            type=RequirementType(cd["type"]) if cd["type"] else None,
+            priority=RequirementPriority(cd["priority"]) if cd["priority"] else None,
+        )
+        with transaction.atomic():
+            UpdateRequirementUseCase(requirement_repo, project_repo).execute(req_uuid, dto)
+
+            current_task_ids = {t.id for t in requirement_repo.list_linked_tasks(req_uuid)}
+            for task_id in current_task_ids - task_ids:
+                UnlinkRequirementFromTaskUseCase(requirement_repo).execute(req_uuid, task_id)
+            for task_id in task_ids - current_task_ids:
+                LinkRequirementToTaskUseCase(requirement_repo, task_repo).execute(req_uuid, task_id)
+
+            current_actor_ids = {a.id for a in requirement_repo.list_linked_actors(req_uuid)}
+            for actor_id in current_actor_ids - actor_ids:
+                UnlinkActorFromRequirementUseCase(requirement_repo).execute(req_uuid, actor_id)
+            for actor_id in actor_ids - current_actor_ids:
+                LinkActorToRequirementUseCase(requirement_repo, actor_repo).execute(req_uuid, actor_id)
+
+        messages.success(request, "Requisito atualizado com sucesso!")
+    except ValidationError as e:
+        msg = e.errors()[0].get("msg", "Dados inválidos.")
+        messages.error(request, f"Erro de validação: {msg}")
+        return render(request, "edit/edit_requirement.html", {"form": form, "requirement": requirement})
+    except DomainError as e:
+        messages.error(request, f"Erro de domínio: {e}")
+        return render(request, "edit/edit_requirement.html", {"form": form, "requirement": requirement})
 
     return redirect("/")
 
@@ -931,27 +998,44 @@ def web_create_actor_view(request):
 
 @login_required(login_url="/login")
 def web_update_actor_view(request, actor_id: str):
-    if request.method == "POST":
-        if not _guard_actor_access(request, actor_id):
-            messages.error(request, "Você não tem permissão para modificar este ator.")
-            return redirect("/")
-        try:
-            name = request.POST.get("name", "").strip()
-            description = request.POST.get("description", "").strip()
+    if not _guard_actor_access(request, actor_id):
+        messages.error(request, "Você não tem permissão para modificar este ator.")
+        return redirect("/")
 
-            dto = UpdateActorSchema(
-                name=name if name else None,
-                description=description if description else None,
-            )
-            UpdateActorUseCase(actor_repo, contract_repo).execute(UUID(actor_id), dto)
-            messages.success(request, "Ator atualizado com sucesso!")
-        except ValidationError as e:
-            msg = e.errors()[0].get("msg", "Dados inválidos.")
-            messages.error(request, f"Erro de validação: {msg}")
-        except ValueError as e:
-            messages.error(request, f"Dados inválidos: {str(e)}")
-        except DomainError as e:
-            messages.error(request, f"Erro de domínio: {e}")
+    try:
+        actor_uuid = UUID(actor_id)
+    except ValueError:
+        messages.error(request, "ID do ator inválido.")
+        return redirect("/")
+
+    actor = actor_repo.get_by_id(actor_uuid)
+    if not actor:
+        messages.error(request, "Ator não encontrado.")
+        return redirect("/")
+
+    if request.method == "GET":
+        form = ActorEditForm(initial={"name": actor.name, "description": actor.description or ""})
+        return render(request, "edit/edit_actor.html", {"form": form, "actor": actor})
+
+    form = ActorEditForm(request.POST)
+    if not form.is_valid():
+        return render(request, "edit/edit_actor.html", {"form": form, "actor": actor})
+
+    try:
+        cd = form.cleaned_data
+        dto = UpdateActorSchema(
+            name=cd["name"] or None,
+            description=cd["description"] or None,
+        )
+        UpdateActorUseCase(actor_repo, contract_repo).execute(actor_uuid, dto)
+        messages.success(request, "Ator atualizado com sucesso!")
+    except ValidationError as e:
+        msg = e.errors()[0].get("msg", "Dados inválidos.")
+        messages.error(request, f"Erro de validação: {msg}")
+        return render(request, "edit/edit_actor.html", {"form": form, "actor": actor})
+    except DomainError as e:
+        messages.error(request, f"Erro de domínio: {e}")
+        return render(request, "edit/edit_actor.html", {"form": form, "actor": actor})
 
     return redirect("/")
 

@@ -39,9 +39,9 @@
                                         </button>
                                     </form>
                                     <div class="d-flex gap-2">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditContract" data-contract-id="{{ c.id }}" data-contract-title="{{ c.title|escapejs }}" data-contract-description="{{ c.description|escapejs }}" data-contract-owner="{{ c.owner_id }}" title="Editar contrato">
+                                        <a href="/web/contracts/{{ c.id }}" class="btn btn-sm btn-outline-secondary flex-grow-1" title="Editar contrato">
                                             <i class="bi bi-pencil me-1"></i> Editar
-                                        </button>
+                                        </a>
                                         <form method="POST" action="/web/contracts/{{ c.id }}/delete" class="flex-grow-1" data-entity-type="contrato" data-entity-warning="Todos os projetos e tarefas vinculados a este contrato também serão excluídos.">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir contrato">
@@ -97,9 +97,9 @@
                                         </form>
                                     </div>
                                     <div class="d-flex gap-2">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditContract" data-contract-id="{{ c.id }}" data-contract-title="{{ c.title|escapejs }}" data-contract-description="{{ c.description|escapejs }}" data-contract-owner="{{ c.owner_id }}" title="Editar contrato">
+                                        <a href="/web/contracts/{{ c.id }}" class="btn btn-sm btn-outline-secondary flex-grow-1" title="Editar contrato">
                                             <i class="bi bi-pencil me-1"></i> Editar
-                                        </button>
+                                        </a>
                                         <form method="POST" action="/web/contracts/{{ c.id }}/delete" class="flex-grow-1" data-entity-type="contrato" data-entity-warning="Todos os projetos e tarefas vinculados a este contrato também serão excluídos.">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir contrato">
@@ -140,9 +140,9 @@
                                     <hr class="my-2 text-muted">
                                     <span class="badge bg-success mb-2"><i class="bi bi-check2-all me-1"></i>Assinado</span>
                                     <div class="d-flex gap-2">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalEditContract" data-contract-id="{{ c.id }}" data-contract-title="{{ c.title|escapejs }}" data-contract-description="{{ c.description|escapejs }}" data-contract-owner="{{ c.owner_id }}" title="Editar contrato">
+                                        <a href="/web/contracts/{{ c.id }}" class="btn btn-sm btn-outline-secondary flex-grow-1" title="Editar contrato">
                                             <i class="bi bi-pencil me-1"></i> Editar
-                                        </button>
+                                        </a>
                                         <form method="POST" action="/web/contracts/{{ c.id }}/delete" class="flex-grow-1" data-entity-type="contrato" data-entity-warning="Todos os projetos e tarefas vinculados a este contrato também serão excluídos.">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger w-100" title="Excluir contrato">

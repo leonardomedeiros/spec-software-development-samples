@@ -16,15 +16,9 @@
 {% include "dashboard/modals/_new_project.html" %}
 {% include "dashboard/modals/_new_task.html" %}
 {% include "dashboard/modals/_new_requirement.html" %}
-{% include "dashboard/modals/_edit_requirement.html" %}
-{% include "dashboard/modals/_view_requirement.html" %}
-{% include "dashboard/modals/_edit_contract.html" %}
-{% include "dashboard/modals/_edit_project.html" %}
-{% include "dashboard/modals/_edit_task.html" %}
 {% include "dashboard/modals/_confirm_delete.html" %}
 {% include "dashboard/modals/_new_user.html" %}
 {% include "dashboard/modals/_new_actor.html" %}
-{% include "dashboard/modals/_edit_actor.html" %}
 
-<script src="{% static 'tasktrack/js/dashboard.js' %}"></script>
+<script src="{% static 'tasktrack/js/dashboard.js' %}?v={% now 'U' %}"></script>
 {% endblock %}

@@ -76,9 +76,9 @@
                                 </td>
                                 <td>
                                     <div class="d-flex gap-1">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditProject" data-project-id="{{ project.id }}" data-project-title="{{ project.title|escapejs }}" data-project-description="{{ project.description|escapejs }}" data-project-owner="{{ project.owner_id }}" title="Editar projeto">
+                                        <a href="/web/projects/{{ project.id }}" class="btn btn-sm btn-outline-secondary" title="Editar projeto">
                                             <i class="bi bi-pencil"></i>
-                                        </button>
+                                        </a>
                                         <form method="POST" action="/web/projects/{{ project.id }}/delete" class="d-inline" data-entity-type="projeto" data-entity-warning="Todas as tarefas vinculadas a este projeto também serão excluídas.">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir projeto">

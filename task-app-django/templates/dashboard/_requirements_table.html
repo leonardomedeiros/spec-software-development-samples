@@ -26,15 +26,9 @@
                             <tr>
                                 <td class="fw-semibold">{{ req.display_id }}</td>
                                 <td class="fw-semibold">
-                                    <button type="button" class="btn btn-link p-0 fw-semibold text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalViewRequirement"
-                                        data-req-code="{{ req.code }}"
-                                        data-req-title="{{ req.title }}"
-                                        data-req-description="{{ req.description }}"
-                                        data-req-type="{{ req.type.value }}"
-                                        data-req-priority="{{ req.priority.value }}"
-                                        data-req-status="{{ req.status.value }}"
-                                        data-req-task-ids="{% for task in req.linked_tasks %}{{ task.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
-                                        data-req-actor-ids="{% for actor in req.linked_actors %}{{ actor.id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                                    <button type="button" class="btn btn-link p-0 fw-semibold text-decoration-none"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalViewReq{{ req.id|cut:'-' }}"
                                         title="Ver requisito (somente leitura)">
                                         {{ req.code }}
                                     </button>
@@ -129,9 +123,9 @@
                                 </td>
                                 <td>
                                     <div class="d-flex gap-1">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditRequirement" data-req-id="{{ req.id }}" data-req-code="{{ req.code }}" data-req-title="{{ req.title }}" data-req-description="{{ req.description }}" data-req-type="{{ req.type.value }}" data-req-priority="{{ req.priority.value }}" data-req-task-ids="{% for task in req.linked_tasks %}{{ task.id }}{% if not forloop.last %},{% endif %}{% endfor %}" data-req-actor-ids="{% for actor in req.linked_actors %}{{ actor.id }}{% if not forloop.last %},{% endif %}{% endfor %}" title="Editar requisito">
+                                        <a href="/web/requirements/{{ req.id }}" class="btn btn-sm btn-outline-secondary" title="Editar requisito">
                                             <i class="bi bi-pencil"></i>
-                                        </button>
+                                        </a>
                                         <form method="POST" action="/web/requirements/{{ req.id }}/delete" class="d-inline" data-entity-type="requisito">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir requisito">
@@ -150,3 +144,75 @@
         {% endif %}
     </div>
 </div>
+
+{% for req in requirements %}
+<div class="modal fade" id="modalViewReq{{ req.id|cut:'-' }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-eye me-2"></i>Visualizar Requisito</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold text-muted small mb-1">Código</label>
+                        <p class="fw-bold mb-0">{{ req.code }}</p>
+                    </div>
+                    <div class="col-md-9">
+                        <label class="form-label fw-semibold text-muted small mb-1">Título</label>
+                        <p class="mb-0">{{ req.title }}</p>
+                    </div>
+                </div>
+                {% if req.description %}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-muted small mb-1">Descrição</label>
+                    <div class="border rounded p-3 bg-light" style="min-height: 80px; white-space: pre-wrap;">{{ req.description }}</div>
+                </div>
+                {% endif %}
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small mb-1">Tipo</label>
+                        <p class="mb-0"><span class="badge bg-secondary">{{ req.type.value }}</span></p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small mb-1">Prioridade</label>
+                        <p class="mb-0">
+                            <span class="badge {% if req.priority.value == 'HIGH' %}bg-danger{% elif req.priority.value == 'MEDIUM' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ req.priority.value }}</span>
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-muted small mb-1">Status</label>
+                        <p class="mb-0"><span class="badge bg-dark">{{ req.status.value }}</span></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold text-muted small mb-1">Tarefas Vinculadas</label>
+                        <div class="border rounded p-2" style="min-height: 50px;">
+                            {% for task in req.linked_tasks %}
+                                <span class="badge bg-secondary me-1 mb-1">{{ task.title }}</span>
+                            {% empty %}
+                                <span class="text-muted small">Sem tarefas vinculadas</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-semibold text-muted small mb-1">Atores Vinculados</label>
+                        <div class="border rounded p-2" style="min-height: 50px;">
+                            {% for actor in req.linked_actors %}
+                                <span class="badge bg-info text-dark me-1 mb-1">{{ actor.name }}</span>
+                            {% empty %}
+                                <span class="text-muted small">Sem atores vinculados</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-arrow-left me-1"></i>Voltar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}

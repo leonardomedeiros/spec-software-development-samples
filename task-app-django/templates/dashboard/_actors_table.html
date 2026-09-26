@@ -34,9 +34,9 @@
                                 </td>
                                 <td>
                                     <div class="d-flex gap-1">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEditActor" data-actor-id="{{ actor.id }}" data-actor-name="{{ actor.name|escapejs }}" data-actor-description="{{ actor.description|escapejs }}" title="Editar ator">
+                                        <a href="/web/actors/{{ actor.id }}" class="btn btn-sm btn-outline-secondary" title="Editar ator">
                                             <i class="bi bi-pencil"></i>
-                                        </button>
+                                        </a>
                                         <form method="POST" action="/web/actors/{{ actor.id }}/delete" class="d-inline" data-entity-type="ator">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir ator">
